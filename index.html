@@ -1,1 +1,673 @@
+<!DOCTYPE html>
+<html lang="ru">
 
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Ты меня любишь? 😺</title>
+	<style>
+		/* ── reset & base ── */
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+			user-select: none;
+		}
+
+		body {
+			min-height: 100vh;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			background: #FFAE42;
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			padding: 20px;
+			overflow: hidden;
+		}
+
+		/* ── main card ── */
+		.card {
+			background: rgba(30, 20, 25, 0.75);
+			backdrop-filter: blur(10px);
+			-webkit-backdrop-filter: blur(10px);
+			border-radius: 60px 60px 40px 40px;
+			padding: 30px 40px 45px;
+			text-align: center;
+			box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+			border: 1px solid rgba(255, 200, 220, 0.15);
+			max-width: 650px;
+			width: 100%;
+			position: relative;
+			z-index: 1;
+		}
+
+		/* ── cat image ── */
+		.cat-image {
+			margin-bottom: 20px;
+			border-radius: 30px;
+			overflow: hidden;
+			box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+			border: 2px solid rgba(255, 200, 220, 0.15);
+		}
+
+		.cat-image img {
+			display: block;
+			width: 100%;
+			height: auto;
+			object-fit: cover;
+			transition: transform 0.3s ease;
+		}
+
+		.cat-image img:hover {
+			transform: scale(1.02);
+		}
+
+		/* ── title ── */
+		.question {
+			font-size: clamp(2.2rem, 10vw, 3.6rem);
+			font-weight: 700;
+			color: #ffe4ec;
+			text-shadow: 0 4px 20px rgba(255, 80, 120, 0.4);
+			letter-spacing: 1px;
+			margin-bottom: 40px;
+			line-height: 1.2;
+		}
+
+		.question span {
+			display: inline-block;
+			animation: pulseGlow 2.8s ease-in-out infinite;
+		}
+
+		@keyframes pulseGlow {
+
+			0%,
+			100% {
+				text-shadow: 0 4px 20px rgba(255, 80, 120, 0.35);
+			}
+
+			50% {
+				text-shadow: 0 4px 40px rgba(255, 120, 180, 0.7),
+					0 0 80px rgba(255, 60, 120, 0.25);
+			}
+		}
+
+		/* ── button container ── */
+		.buttons {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			gap: 50px;
+			flex-wrap: wrap;
+			position: relative;
+			min-height: 90px;
+		}
+
+		/* ── base button style ── */
+		.btn {
+			padding: 16px 48px;
+			border: none;
+			border-radius: 60px;
+			font-size: 1.8rem;
+			font-weight: 700;
+			cursor: pointer;
+			letter-spacing: 1.5px;
+			min-width: 130px;
+			touch-action: manipulation;
+			position: relative;
+			z-index: 2;
+			transition: transform 0.18s ease, box-shadow 0.2s ease;
+		}
+
+		/* ── YES button ── */
+		.btn-yes {
+			background: linear-gradient(145deg, #ff6b8a, #e8456a);
+			color: #fff;
+			box-shadow: 0 10px 28px rgba(255, 60, 100, 0.45);
+			border: 1px solid rgba(255, 255, 255, 0.15);
+		}
+
+		.btn-yes:hover {
+			transform: scale(1.06);
+			box-shadow: 0 14px 36px rgba(255, 60, 100, 0.6);
+			background: linear-gradient(145deg, #ff7a98, #ed4d72);
+		}
+
+		.btn-yes:active {
+			transform: scale(0.94);
+		}
+
+		/* ── NO button (по умолчанию в потоке) ── */
+		.btn-no {
+			background: linear-gradient(145deg, #5a4a5e, #3f313f);
+			color: #f0dce6;
+			box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+			border: 1px solid rgba(255, 255, 255, 0.06);
+			display: inline-block;
+		}
+
+		.btn-no:hover {
+			transform: scale(1.05);
+			box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+			background: linear-gradient(145deg, #645268, #473a47);
+		}
+
+		/* ── состояние "убегающей" кнопки (fixed) ── */
+		.btn-no-floating {
+			position: fixed !important;
+			left: 50%;
+			top: 50%;
+			transform: translate(-50%, -50%) scale(1);
+			transition: left 0.05s cubic-bezier(0.25, 1.2, 0.5, 1),
+				top 0.05s cubic-bezier(0.25, 1.2, 0.5, 1),
+				transform 0.05s ease;
+			will-change: left, top;
+			z-index: 100;
+			margin: 0;
+			display: block;
+		}
+
+		.btn-no-floating:hover {
+			transform: scale(1.08);
+		}
+
+		/* ── celebration overlay ── */
+		.celebration {
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			display: none;
+			justify-content: center;
+			align-items: center;
+			background: rgba(0, 0, 0, 0.55);
+			backdrop-filter: blur(8px);
+			-webkit-backdrop-filter: blur(8px);
+			z-index: 999;
+			animation: fadeIn 0.5s ease;
+			padding: 30px;
+		}
+
+		.celebration.show {
+			display: flex;
+		}
+
+		.celebration-content {
+			background: linear-gradient(145deg, #2b1a2e, #1f1122);
+			padding: 50px 60px 55px;
+			border-radius: 60px;
+			text-align: center;
+			border: 1px solid rgba(255, 200, 220, 0.12);
+			box-shadow: 0 40px 80px rgba(0, 0, 0, 0.7);
+			max-width: 500px;
+			width: 100%;
+			animation: popIn 0.5s cubic-bezier(0.34, 1.4, 0.64, 1);
+		}
+
+		.celebration-content h2 {
+			font-size: 3.2rem;
+			color: #ffe4ec;
+			text-shadow: 0 4px 30px rgba(255, 80, 120, 0.5);
+			margin-bottom: 20px;
+		}
+
+		.celebration-content p {
+			font-size: 1.3rem;
+			color: #dbb8c8;
+			margin-bottom: 30px;
+			line-height: 1.6;
+		}
+
+		.celebration-content .btn {
+			background: linear-gradient(145deg, #ff6b8a, #e8456a);
+			color: #fff;
+			box-shadow: 0 10px 28px rgba(255, 60, 100, 0.45);
+			padding: 14px 44px;
+			font-size: 1.4rem;
+			border: 1px solid rgba(255, 255, 255, 0.12);
+			position: static;
+			transition: transform 0.2s;
+		}
+
+		.celebration-content .btn:hover {
+			transform: scale(1.05);
+			box-shadow: 0 14px 36px rgba(255, 60, 100, 0.6);
+		}
+
+		.hearts {
+			font-size: 4rem;
+			line-height: 1;
+			animation: floatHearts 1.8s ease-in-out infinite alternate;
+		}
+
+		@keyframes floatHearts {
+			0% {
+				transform: translateY(0) scale(1);
+			}
+
+			100% {
+				transform: translateY(-12px) scale(1.08);
+			}
+		}
+
+		@keyframes popIn {
+			0% {
+				transform: scale(0.7);
+				opacity: 0;
+			}
+
+			100% {
+				transform: scale(1);
+				opacity: 1;
+			}
+		}
+
+		@keyframes fadeIn {
+			0% {
+				opacity: 0;
+			}
+
+			100% {
+				opacity: 1;
+			}
+		}
+
+		.sparkle {
+			position: fixed;
+			pointer-events: none;
+			font-size: 1.8rem;
+			animation: sparkleFade 1.2s ease-out forwards;
+			z-index: 1000;
+		}
+
+		@keyframes sparkleFade {
+			0% {
+				opacity: 1;
+				transform: translate(0, 0) scale(0.5) rotate(0deg);
+			}
+
+			100% {
+				opacity: 0;
+				transform: translate(var(--tx), var(--ty)) scale(1.5) rotate(720deg);
+			}
+		}
+
+		/* ── новое окошко "принцесса" ── */
+		.princess-modal {
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			display: none;
+			justify-content: center;
+			align-items: center;
+			background: rgba(0, 0, 0, 0.4);
+			backdrop-filter: blur(4px);
+			-webkit-backdrop-filter: blur(4px);
+			z-index: 1001;
+			padding: 30px;
+		}
+
+		.princess-modal.show {
+			display: flex;
+		}
+
+		.princess-content {
+			background: #ff9a70;
+			/* цвет фона по запросу */
+			padding: 50px 60px 55px;
+			border-radius: 60px;
+			text-align: center;
+			max-width: 500px;
+			width: 100%;
+			box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+			animation: popIn 0.4s cubic-bezier(0.34, 1.4, 0.64, 1);
+		}
+
+		.princess-content p {
+			font-size: 2.2rem;
+			font-weight: 700;
+			color: #2b1a2e;
+			margin-bottom: 30px;
+			letter-spacing: 1px;
+		}
+
+		.btn-close-princess {
+			background: #2b1a2e;
+			color: #fff;
+			border: none;
+			padding: 12px 36px;
+			border-radius: 40px;
+			font-size: 1.2rem;
+			font-weight: 600;
+			cursor: pointer;
+			transition: transform 0.2s, box-shadow 0.2s;
+			box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+		}
+
+		.btn-close-princess:hover {
+			transform: scale(1.05);
+			box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+		}
+
+		/* ── responsive ── */
+		@media (max-width: 550px) {
+			.card {
+				padding: 20px 20px 35px;
+				border-radius: 40px;
+			}
+
+			.buttons {
+				gap: 30px;
+				flex-direction: column;
+				min-height: 130px;
+			}
+
+			.btn {
+				padding: 14px 32px;
+				font-size: 1.5rem;
+				min-width: 110px;
+			}
+
+			.celebration-content {
+				padding: 35px 24px 40px;
+			}
+
+			.celebration-content h2 {
+				font-size: 2.4rem;
+			}
+
+			.princess-content {
+				padding: 35px 24px 40px;
+			}
+
+			.princess-content p {
+				font-size: 1.8rem;
+			}
+		}
+
+		@media (max-width: 400px) {
+			.btn {
+				padding: 12px 24px;
+				font-size: 1.3rem;
+				min-width: 90px;
+			}
+
+			.question {
+				font-size: 1.8rem;
+			}
+
+			.princess-content p {
+				font-size: 1.5rem;
+			}
+		}
+
+		.hint {
+			margin-top: 28px;
+			color: #dbb8c8;
+			font-size: 0.9rem;
+			letter-spacing: 0.3px;
+			opacity: 0.7;
+		}
+	</style>
+</head>
+
+<body>
+
+	<!-- ─── MAIN CARD ─── -->
+	<div class="card" role="main" aria-labelledby="question">
+
+		<!-- КАРТИНКА С КОТИКАМИ (замените src на свой файл) -->
+		<div class="cat-image">
+			<img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcXY1ZmZ6MzU0MDRyMmw4NnJ5a2sxaTBvYjUxN21kZHVmZGQ0cWlrdSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/XaikVL6qbrJSJoQmCR/giphy.gif" alt="Милые котики" />
+        </div>
+
+			<h1 id="question" class="question">
+				<span></span> Ты меня любишь? <span>❤️</span>
+			</h1>
+
+			<div class="buttons" id="buttonContainer">
+				<!-- YES button -->
+				<button class="btn btn-yes" id="btnYes" type="button">
+                Да ❤️
+            </button>
+
+				<!-- NO button — изначально в потоке -->
+				<button class="btn btn-no" id="btnNo" type="button">
+                Нет 💔
+            </button>
+			</div>
+
+			<p class="hint">Попробуй навести на нет)</p>
+		</div>
+
+		<!-- ─── CELEBRATION OVERLAY ─── -->
+		<div class="celebration" id="celebration" role="dialog" aria-modal="true">
+			<div class="celebration-content">
+				<div class="hearts">💖💕💗</div>
+				<h2>УРАА</h2>
+				<p>А теперь прочитай что я написала для тебя, принцесса<br />🌹✨</p>
+					<button class="btn" id="btnReset" type="button">Прочитать</button>
+			</div>
+		</div>
+
+		<!-- ─── НОВОЕ ОКОШКО "ПРИНЦЕССА" ─── -->
+		<div class="princess-modal" id="princessModal">
+			<div class="princess-content">
+				<p>Твои кудрявые волосы — как океаны,
+				Глаза цвета леса,
+				Ну что же за дама?
+				Не видали миры таких прекрасных, как ты.
+				При виде тебя цветут не только цветы,
+				И ведь правду говорят:
+				Никогда не соврет милый твой взгляд.
+				Этими строчками хочу лишь сказать,
+				Что дорого стоит тебя потерять.
+				Я слишком люблю,
+				Чтобы бросать
+				И в чем-то вообще тебя попрекать.
+				Ты ведь принцесса и прелесть моя,
+				Невозможно так просто забыть про тебя.
+				Ты прекрасна, красива, нежна и мила,
+				И хочется, чтоб счастлива жизнь была у тебя.
+				Ты — солнце в моих темных ночах,
+				И в будущем будем сидеть при свечах,
+				Смотря на луну и думая в час,
+				Как однажды влюбились два сердца подчас.</p>
+				<button class="btn-close-princess" id="closePrincess">Закрыть</button>
+			</div>
+		</div>
+
+		<!-- ─── SCRIPTS ─── -->
+		<script>
+			(function() {
+            'use strict';
+
+            const noBtn = document.getElementById('btnNo');
+            const yesBtn = document.getElementById('btnYes');
+            const container = document.getElementById('buttonContainer');
+            const celebration = document.getElementById('celebration');
+            const resetBtn = document.getElementById('btnReset');
+            const princessModal = document.getElementById('princessModal');
+            const closePrincessBtn = document.getElementById('closePrincess');
+
+            // ── состояние ──
+            let isFloating = false;
+
+            // ── получить случайные координаты в пределах окна ──
+            function getRandomCoords(btnEl) {
+                const btnW = btnEl.offsetWidth || 130;
+                const btnH = btnEl.offsetHeight || 70;
+                const winW = window.innerWidth;
+                const winH = window.innerHeight;
+                const margin = 15;
+                let left = Math.random() * (winW - btnW - margin * 2) + margin;
+                let top = Math.random() * (winH - btnH - margin * 2) + margin;
+                left = Math.max(margin, Math.min(left, winW - btnW - margin));
+                top = Math.max(margin, Math.min(top, winH - btnH - margin));
+                return { left, top };
+            }
+
+            // ── переключить в режим fixed и переместить ──
+            function makeFloatingAndMove() {
+                if (isFloating) {
+                    const { left, top } = getRandomCoords(noBtn);
+                    noBtn.style.left = left + 'px';
+                    noBtn.style.top = top + 'px';
+                    noBtn.style.transform = 'scale(1)';
+                    return;
+                }
+
+                const rect = noBtn.getBoundingClientRect();
+                const left = rect.left;
+                const top = rect.top;
+
+                noBtn.classList.add('btn-no-floating');
+                noBtn.style.left = left + 'px';
+                noBtn.style.top = top + 'px';
+                noBtn.style.transform = 'scale(1)';
+
+                isFloating = true;
+
+                requestAnimationFrame(() => {
+                    const newPos = getRandomCoords(noBtn);
+                    noBtn.style.left = newPos.left + 'px';
+                    noBtn.style.top = newPos.top + 'px';
+                });
+            }
+
+            // ── вернуть в исходное состояние (в поток) ──
+            function resetNoButton() {
+                if (isFloating) {
+                    noBtn.classList.remove('btn-no-floating');
+                    noBtn.style.left = '';
+                    noBtn.style.top = '';
+                    noBtn.style.transform = '';
+                    isFloating = false;
+                }
+            }
+
+            // ── обработчик наведения на "Нет" ──
+            function onNoHover(e) {
+                e.preventDefault();
+                if (celebration.classList.contains('show')) return;
+                if (princessModal.classList.contains('show')) return;
+                makeFloatingAndMove();
+            }
+
+            // ── YES click ──
+            function onYesClick() {
+                celebration.classList.add('show');
+                spawnSparkles();
+            }
+
+            // ── закрыть праздничное окно (без открытия нового) ──
+            function closeCelebration() {
+                celebration.classList.remove('show');
+                resetNoButton();
+            }
+
+            // ── открыть окошко "принцесса" ──
+            function openPrincess() {
+                // закрываем праздничное окно
+                celebration.classList.remove('show');
+                // показываем новое
+                princessModal.classList.add('show');
+            }
+
+            // ── закрыть окошко "принцесса" ──
+            function closePrincess() {
+                princessModal.classList.remove('show');
+            }
+
+            // ── sparkles ──
+            function spawnSparkles() {
+                const emojis = [''];
+                for (let i = 0; i < 36; i++) {
+                    const el = document.createElement('div');
+                    el.className = 'sparkle';
+                    el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                    const x = Math.random() * window.innerWidth;
+                    const y = Math.random() * window.innerHeight * 0.6 + window.innerHeight * 0.1;
+                    el.style.left = x + 'px';
+                    el.style.top = y + 'px';
+                    const tx = (Math.random() - 0.5) * 400;
+                    const ty = (Math.random() - 0.5) * 400 - 100;
+                    el.style.setProperty('--tx', tx + 'px');
+                    el.style.setProperty('--ty', ty + 'px');
+                    el.style.fontSize = (1.2 + Math.random() * 2) + 'rem';
+                    el.style.animationDuration = (0.8 + Math.random() * 0.8) + 's';
+                    document.body.appendChild(el);
+                    setTimeout(() => el.remove(), 1800);
+                }
+            }
+
+            // ── привязка событий ──
+
+            // "Нет" – наведение
+            noBtn.addEventListener('mouseenter', onNoHover);
+            noBtn.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                if (celebration.classList.contains('show')) return;
+                if (princessModal.classList.contains('show')) return;
+                makeFloatingAndMove();
+            }, { passive: false });
+
+            // "Да"
+            yesBtn.addEventListener('click', onYesClick);
+
+            // "Прочитать" – открываем окошко принцессы
+            resetBtn.addEventListener('click', openPrincess);
+
+            // Закрытие окошка принцессы по кнопке или клику на фон
+            closePrincessBtn.addEventListener('click', closePrincess);
+            princessModal.addEventListener('click', function(e) {
+                if (e.target === princessModal) closePrincess();
+            });
+
+            // Закрытие праздничного окна по клику вне или Esc
+            celebration.addEventListener('click', function(e) {
+                if (e.target === celebration) closeCelebration();
+            });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    if (celebration.classList.contains('show')) closeCelebration();
+                    if (princessModal.classList.contains('show')) closePrincess();
+                }
+            });
+
+            // ── при изменении размера окна корректируем позицию "Нет" ──
+            let resizeTimer;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(() => {
+                    if (!isFloating || celebration.classList.contains('show')) return;
+                    const rect = noBtn.getBoundingClientRect();
+                    const winW = window.innerWidth;
+                    const winH = window.innerHeight;
+                    const margin = 15;
+                    let left = parseFloat(noBtn.style.left) || 0;
+                    let top = parseFloat(noBtn.style.top) || 0;
+                    const btnW = rect.width || 130;
+                    const btnH = rect.height || 70;
+                    let newLeft = left;
+                    let newTop = top;
+                    if (left + btnW > winW - margin) newLeft = winW - btnW - margin;
+                    if (left < margin) newLeft = margin;
+                    if (top + btnH > winH - margin) newTop = winH - btnH - margin;
+                    if (top < margin) newTop = margin;
+                    if (newLeft !== left || newTop !== top) {
+                        noBtn.style.left = newLeft + 'px';
+                        noBtn.style.top = newTop + 'px';
+                    }
+                }, 200);
+            });
+
+            console.log('😺 Наведи на "Нет" — она убежит по всему экрану!');
+        })();
+		</script>
+
+</body>
+
+</html>
