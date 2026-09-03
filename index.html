@@ -273,8 +273,8 @@
                 'controls': 1,
                 'rel': 0,
                 'modestbranding': 1,
-                'origin': window.location.origin,       // устраняет ошибку postMessage
-                'host': 'https://www.youtube.com'      // используем стандартный YouTube
+                'origin': window.location.origin,
+                'host': 'https://www.youtube.com'
             },
             events: {
                 'onReady': onPlayerReady,
@@ -288,7 +288,6 @@
         console.log('YouTube Player готов');
         updateSliderFromPlayer();
         setInterval(updateSliderFromPlayer, 500);
-        // применяем все отложенные команды
         while (pendingCommands.length > 0) {
             const cmd = pendingCommands.shift();
             handleIncomingData(cmd);
@@ -296,9 +295,7 @@
     }
 
     function onPlayerStateChange(event) {
-        if (isApplyingRemote) return; // изменение вызвано удалённой командой
-
-        // Отправляем состояние партнёру только при локальных действиях
+        if (isApplyingRemote) return;
         if (conn && conn.open && playerReady) {
             if (event.data === YT.PlayerState.PLAYING) {
                 sendCommand({ type: 'play', currentTime: player.getCurrentTime() });
@@ -307,7 +304,6 @@
             }
         }
 
-        // Применяем отложенное состояние play/pause после загрузки нового видео
         if (pendingPlayState !== null && 
             (event.data === YT.PlayerState.CUED || event.data === YT.PlayerState.PLAYING)) {
             if (pendingPlayState) {
@@ -397,7 +393,6 @@
                     const connection = peer.connect(hostId, { reliable: true });
                     conn = connection;
                     setupConnection(connection);
-                    // Таймаут подключения
                     connectionTimeout = setTimeout(() => {
                         if (!conn.open) {
                             connectionStatus.textContent = 'Не удалось подключиться (таймаут)';
@@ -405,7 +400,7 @@
                             conn.close();
                             conn = null;
                         }
-                    }, 10000); // 10 секунд
+                    }, 10000);
                 }
             }
         });
@@ -416,7 +411,7 @@
                 setupConnection(conn);
                 connectionStatus.textContent = 'Гость подключён!';
                 connectionStatus.className = 'status connected';
-                sendCurrentState(); // отправляем текущее состояние новому гостю
+                // Отправку состояния перенесли в обработчик open
             } else {
                 incomingConn.on('open', () => incomingConn.close());
             }
@@ -439,6 +434,9 @@
             }
             if (!isHost) {
                 sendCommand({ type: 'request_state' });
+            } else {
+                // Хост автоматически отправляет текущее состояние гостю
+                sendCurrentState();
             }
         });
 
@@ -526,6 +524,7 @@
     }
 
     function sendCurrentState() {
+        console.log('sendCurrentState вызван, isHost =', isHost, 'conn.open =', conn ? conn.open : false);
         if (!isHost || !conn || !conn.open || !player || !playerReady || !currentVideoId) return;
         const state = {
             type: 'sync_state',
@@ -534,6 +533,7 @@
             isPlaying: player.getPlayerState() === YT.PlayerState.PLAYING
         };
         conn.send(state);
+        console.log('Отправлено состояние:', state);
     }
 
     // ==================== ОБРАБОТЧИКИ КНОПОК ====================
