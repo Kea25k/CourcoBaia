@@ -1,673 +1,594 @@
 <!DOCTYPE html>
 <html lang="ru">
-
 <head>
-	<meta charset="UTF-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>Ты меня любишь? 😺</title>
-	<style>
-		/* ── reset & base ── */
-		* {
-			margin: 0;
-			padding: 0;
-			box-sizing: border-box;
-			user-select: none;
-		}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Синхронный просмотр YouTube</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --card: #16213e;
+            --accent: #e94560;
+            --text: #eee;
+            --muted: #aaa;
+            --success: #4caf50;
+        }
 
-		body {
-			min-height: 100vh;
-			display: flex;
-			justify-content: center;
-			align-items: center;
-			background: #FFAE42;
-			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-			padding: 20px;
-			overflow: hidden;
-		}
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
-		/* ── main card ── */
-		.card {
-			background: rgba(30, 20, 25, 0.75);
-			backdrop-filter: blur(10px);
-			-webkit-backdrop-filter: blur(10px);
-			border-radius: 60px 60px 40px 40px;
-			padding: 30px 40px 45px;
-			text-align: center;
-			box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
-			border: 1px solid rgba(255, 200, 220, 0.15);
-			max-width: 650px;
-			width: 100%;
-			position: relative;
-			z-index: 1;
-		}
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
 
-		/* ── cat image ── */
-		.cat-image {
-			margin-bottom: 20px;
-			border-radius: 30px;
-			overflow: hidden;
-			box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-			border: 2px solid rgba(255, 200, 220, 0.15);
-		}
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: var(--card);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
 
-		.cat-image img {
-			display: block;
-			width: 100%;
-			height: auto;
-			object-fit: cover;
-			transition: transform 0.3s ease;
-		}
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: 300;
+            letter-spacing: 1px;
+            color: var(--accent);
+        }
 
-		.cat-image img:hover {
-			transform: scale(1.02);
-		}
+        .room-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
 
-		/* ── title ── */
-		.question {
-			font-size: clamp(2.2rem, 10vw, 3.6rem);
-			font-weight: 700;
-			color: #ffe4ec;
-			text-shadow: 0 4px 20px rgba(255, 80, 120, 0.4);
-			letter-spacing: 1px;
-			margin-bottom: 40px;
-			line-height: 1.2;
-		}
+        .room-section button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        .room-section button:hover { filter: brightness(1.2); }
+        .room-section button:disabled { background: #555; cursor: not-allowed; }
 
-		.question span {
-			display: inline-block;
-			animation: pulseGlow 2.8s ease-in-out infinite;
-		}
+        .room-id-display {
+            font-family: monospace;
+            background: #000;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 16px;
+            letter-spacing: 1px;
+            user-select: all;
+        }
 
-		@keyframes pulseGlow {
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
 
-			0%,
-			100% {
-				text-shadow: 0 4px 20px rgba(255, 80, 120, 0.35);
-			}
+        .input-group input {
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #444;
+            background: #0f0f1a;
+            color: var(--text);
+            font-size: 14px;
+            width: 220px;
+        }
 
-			50% {
-				text-shadow: 0 4px 40px rgba(255, 120, 180, 0.7),
-					0 0 80px rgba(255, 60, 120, 0.25);
-			}
-		}
+        .status {
+            margin-left: auto;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            background: #333;
+        }
+        .status.connected { background: var(--success); color: #000; }
+        .status.disconnected { background: #555; }
 
-		/* ── button container ── */
-		.buttons {
-			display: flex;
-			justify-content: center;
-			align-items: center;
-			gap: 50px;
-			flex-wrap: wrap;
-			position: relative;
-			min-height: 90px;
-		}
+        .video-url-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .video-url-section input {
+            flex: 1;
+            min-width: 250px;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            background: #0f0f1a;
+            color: var(--text);
+            font-size: 15px;
+        }
+        .video-url-section button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            transition: 0.2s;
+        }
+        .video-url-section button:hover { background: #2980b9; }
 
-		/* ── base button style ── */
-		.btn {
-			padding: 16px 48px;
-			border: none;
-			border-radius: 60px;
-			font-size: 1.8rem;
-			font-weight: 700;
-			cursor: pointer;
-			letter-spacing: 1.5px;
-			min-width: 130px;
-			touch-action: manipulation;
-			position: relative;
-			z-index: 2;
-			transition: transform 0.18s ease, box-shadow 0.2s ease;
-		}
+        .player-wrapper {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        #player {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+        }
 
-		/* ── YES button ── */
-		.btn-yes {
-			background: linear-gradient(145deg, #ff6b8a, #e8456a);
-			color: #fff;
-			box-shadow: 0 10px 28px rgba(255, 60, 100, 0.45);
-			border: 1px solid rgba(255, 255, 255, 0.15);
-		}
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .controls button {
+            background: #2c3e50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: 0.2s;
+            min-width: 80px;
+        }
+        .controls button:hover { background: #34495e; }
+        .controls button.primary { background: var(--accent); }
+        .controls button.primary:hover { background: #c0392b; }
 
-		.btn-yes:hover {
-			transform: scale(1.06);
-			box-shadow: 0 14px 36px rgba(255, 60, 100, 0.6);
-			background: linear-gradient(145deg, #ff7a98, #ed4d72);
-		}
+        .seek-slider {
+            flex: 1;
+            min-width: 200px;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
 
-		.btn-yes:active {
-			transform: scale(0.94);
-		}
+        .time-display {
+            font-family: monospace;
+            font-size: 14px;
+            color: var(--muted);
+        }
 
-		/* ── NO button (по умолчанию в потоке) ── */
-		.btn-no {
-			background: linear-gradient(145deg, #5a4a5e, #3f313f);
-			color: #f0dce6;
-			box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
-			border: 1px solid rgba(255, 255, 255, 0.06);
-			display: inline-block;
-		}
+        .sync-btn {
+            background: #27ae60 !important;
+        }
+        .sync-btn:hover { background: #2ecc71 !important; }
 
-		.btn-no:hover {
-			transform: scale(1.05);
-			box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
-			background: linear-gradient(145deg, #645268, #473a47);
-		}
-
-		/* ── состояние "убегающей" кнопки (fixed) ── */
-		.btn-no-floating {
-			position: fixed !important;
-			left: 50%;
-			top: 50%;
-			transform: translate(-50%, -50%) scale(1);
-			transition: left 0.05s cubic-bezier(0.25, 1.2, 0.5, 1),
-				top 0.05s cubic-bezier(0.25, 1.2, 0.5, 1),
-				transform 0.05s ease;
-			will-change: left, top;
-			z-index: 100;
-			margin: 0;
-			display: block;
-		}
-
-		.btn-no-floating:hover {
-			transform: scale(1.08);
-		}
-
-		/* ── celebration overlay ── */
-		.celebration {
-			position: fixed;
-			top: 0;
-			left: 0;
-			right: 0;
-			bottom: 0;
-			display: none;
-			justify-content: center;
-			align-items: center;
-			background: rgba(0, 0, 0, 0.55);
-			backdrop-filter: blur(8px);
-			-webkit-backdrop-filter: blur(8px);
-			z-index: 999;
-			animation: fadeIn 0.5s ease;
-			padding: 30px;
-		}
-
-		.celebration.show {
-			display: flex;
-		}
-
-		.celebration-content {
-			background: linear-gradient(145deg, #2b1a2e, #1f1122);
-			padding: 50px 60px 55px;
-			border-radius: 60px;
-			text-align: center;
-			border: 1px solid rgba(255, 200, 220, 0.12);
-			box-shadow: 0 40px 80px rgba(0, 0, 0, 0.7);
-			max-width: 500px;
-			width: 100%;
-			animation: popIn 0.5s cubic-bezier(0.34, 1.4, 0.64, 1);
-		}
-
-		.celebration-content h2 {
-			font-size: 3.2rem;
-			color: #ffe4ec;
-			text-shadow: 0 4px 30px rgba(255, 80, 120, 0.5);
-			margin-bottom: 20px;
-		}
-
-		.celebration-content p {
-			font-size: 1.3rem;
-			color: #dbb8c8;
-			margin-bottom: 30px;
-			line-height: 1.6;
-		}
-
-		.celebration-content .btn {
-			background: linear-gradient(145deg, #ff6b8a, #e8456a);
-			color: #fff;
-			box-shadow: 0 10px 28px rgba(255, 60, 100, 0.45);
-			padding: 14px 44px;
-			font-size: 1.4rem;
-			border: 1px solid rgba(255, 255, 255, 0.12);
-			position: static;
-			transition: transform 0.2s;
-		}
-
-		.celebration-content .btn:hover {
-			transform: scale(1.05);
-			box-shadow: 0 14px 36px rgba(255, 60, 100, 0.6);
-		}
-
-		.hearts {
-			font-size: 4rem;
-			line-height: 1;
-			animation: floatHearts 1.8s ease-in-out infinite alternate;
-		}
-
-		@keyframes floatHearts {
-			0% {
-				transform: translateY(0) scale(1);
-			}
-
-			100% {
-				transform: translateY(-12px) scale(1.08);
-			}
-		}
-
-		@keyframes popIn {
-			0% {
-				transform: scale(0.7);
-				opacity: 0;
-			}
-
-			100% {
-				transform: scale(1);
-				opacity: 1;
-			}
-		}
-
-		@keyframes fadeIn {
-			0% {
-				opacity: 0;
-			}
-
-			100% {
-				opacity: 1;
-			}
-		}
-
-		.sparkle {
-			position: fixed;
-			pointer-events: none;
-			font-size: 1.8rem;
-			animation: sparkleFade 1.2s ease-out forwards;
-			z-index: 1000;
-		}
-
-		@keyframes sparkleFade {
-			0% {
-				opacity: 1;
-				transform: translate(0, 0) scale(0.5) rotate(0deg);
-			}
-
-			100% {
-				opacity: 0;
-				transform: translate(var(--tx), var(--ty)) scale(1.5) rotate(720deg);
-			}
-		}
-
-		/* ── новое окошко "принцесса" ── */
-		.princess-modal {
-			position: fixed;
-			top: 0;
-			left: 0;
-			right: 0;
-			bottom: 0;
-			display: none;
-			justify-content: center;
-			align-items: center;
-			background: rgba(0, 0, 0, 0.4);
-			backdrop-filter: blur(4px);
-			-webkit-backdrop-filter: blur(4px);
-			z-index: 1001;
-			padding: 30px;
-		}
-
-		.princess-modal.show {
-			display: flex;
-		}
-
-		.princess-content {
-			background: #ff9a70;
-			/* цвет фона по запросу */
-			padding: 50px 60px 55px;
-			border-radius: 60px;
-			text-align: center;
-			max-width: 500px;
-			width: 100%;
-			box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
-			animation: popIn 0.4s cubic-bezier(0.34, 1.4, 0.64, 1);
-		}
-
-		.princess-content p {
-			font-size: 2.2rem;
-			font-weight: 700;
-			color: #2b1a2e;
-			margin-bottom: 30px;
-			letter-spacing: 1px;
-		}
-
-		.btn-close-princess {
-			background: #2b1a2e;
-			color: #fff;
-			border: none;
-			padding: 12px 36px;
-			border-radius: 40px;
-			font-size: 1.2rem;
-			font-weight: 600;
-			cursor: pointer;
-			transition: transform 0.2s, box-shadow 0.2s;
-			box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-		}
-
-		.btn-close-princess:hover {
-			transform: scale(1.05);
-			box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
-		}
-
-		/* ── responsive ── */
-		@media (max-width: 550px) {
-			.card {
-				padding: 20px 20px 35px;
-				border-radius: 40px;
-			}
-
-			.buttons {
-				gap: 30px;
-				flex-direction: column;
-				min-height: 130px;
-			}
-
-			.btn {
-				padding: 14px 32px;
-				font-size: 1.5rem;
-				min-width: 110px;
-			}
-
-			.celebration-content {
-				padding: 35px 24px 40px;
-			}
-
-			.celebration-content h2 {
-				font-size: 2.4rem;
-			}
-
-			.princess-content {
-				padding: 35px 24px 40px;
-			}
-
-			.princess-content p {
-				font-size: 1.8rem;
-			}
-		}
-
-		@media (max-width: 400px) {
-			.btn {
-				padding: 12px 24px;
-				font-size: 1.3rem;
-				min-width: 90px;
-			}
-
-			.question {
-				font-size: 1.8rem;
-			}
-
-			.princess-content p {
-				font-size: 1.5rem;
-			}
-		}
-
-		.hint {
-			margin-top: 28px;
-			color: #dbb8c8;
-			font-size: 0.9rem;
-			letter-spacing: 0.3px;
-			opacity: 0.7;
-		}
-	</style>
+        @media (max-width: 600px) {
+            .container { padding: 15px; }
+            .room-section { flex-direction: column; align-items: stretch; }
+            .status { margin-left: 0; text-align: center; }
+            .input-group input { width: 100%; }
+        }
+    </style>
 </head>
-
 <body>
+<div class="container">
+    <h1>🎬 Синхронный кинозал</h1>
 
-	<!-- ─── MAIN CARD ─── -->
-	<div class="card" role="main" aria-labelledby="question">
-
-		<!-- КАРТИНКА С КОТИКАМИ (замените src на свой файл) -->
-		<div class="cat-image">
-			<img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcXY1ZmZ6MzU0MDRyMmw4NnJ5a2sxaTBvYjUxN21kZHVmZGQ0cWlrdSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/XaikVL6qbrJSJoQmCR/giphy.gif" alt="Милые котики" />
+    <!-- Комната -->
+    <div class="room-section">
+        <button id="btn-create-room">Создать комнату</button>
+        <div class="input-group">
+            <input type="text" id="join-room-id" placeholder="ID комнаты">
+            <button id="btn-join-room">Подключиться</button>
         </div>
+        <div class="room-id-display" id="room-id-display">—</div>
+        <span class="status disconnected" id="connection-status">Не подключено</span>
+    </div>
 
-			<h1 id="question" class="question">
-				<span></span> Ты меня любишь? <span>❤️</span>
-			</h1>
+    <!-- Ввод ссылки на видео -->
+    <div class="video-url-section">
+        <input type="text" id="video-url" placeholder="Вставьте ссылку на YouTube видео...">
+        <button id="btn-load-video">Загрузить</button>
+    </div>
 
-			<div class="buttons" id="buttonContainer">
-				<!-- YES button -->
-				<button class="btn btn-yes" id="btnYes" type="button">
-                Да ❤️
-            </button>
+    <!-- Плеер -->
+    <div class="player-wrapper">
+        <div id="player"></div>
+    </div>
 
-				<!-- NO button — изначально в потоке -->
-				<button class="btn btn-no" id="btnNo" type="button">
-                Нет 💔
-            </button>
-			</div>
+    <!-- Управление -->
+    <div class="controls">
+        <button id="btn-play-pause" class="primary">▶ Play</button>
+        <input type="range" id="seek-slider" class="seek-slider" min="0" max="100" step="0.1" value="0">
+        <span class="time-display" id="time-display">0:00 / 0:00</span>
+        <button id="btn-sync-now" class="sync-btn">↻ Синхр.</button>
+    </div>
+</div>
 
-			<p class="hint">Попробуй навести на нет)</p>
-		</div>
+<!-- PeerJS -->
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<!-- YouTube Iframe API -->
+<script src="https://www.youtube.com/iframe_api"></script>
 
-		<!-- ─── CELEBRATION OVERLAY ─── -->
-		<div class="celebration" id="celebration" role="dialog" aria-modal="true">
-			<div class="celebration-content">
-				<div class="hearts">💖💕💗</div>
-				<h2>УРАА</h2>
-				<p>А теперь прочитай что я написала для тебя, принцесса<br />🌹✨</p>
-					<button class="btn" id="btnReset" type="button">Прочитать</button>
-			</div>
-		</div>
+<script>
+    // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
+    let peer = null;
+    let conn = null;
+    let isHost = false;
+    let player = null;
+    let playerReady = false;
+    let currentVideoId = null;
+    let isApplyingRemote = false; // флаг, чтобы не зациклить синхронизацию
+    let updateInterval = null;
 
-		<!-- ─── НОВОЕ ОКОШКО "ПРИНЦЕССА" ─── -->
-		<div class="princess-modal" id="princessModal">
-			<div class="princess-content">
-				<p>Твои кудрявые волосы — как океаны,
-				Глаза цвета леса,
-				Ну что же за дама?
-				Не видали миры таких прекрасных, как ты.
-				При виде тебя цветут не только цветы,
-				И ведь правду говорят:
-				Никогда не соврет милый твой взгляд.
-				Этими строчками хочу лишь сказать,
-				Что дорого стоит тебя потерять.
-				Я слишком люблю,
-				Чтобы бросать
-				И в чем-то вообще тебя попрекать.
-				Ты ведь принцесса и прелесть моя,
-				Невозможно так просто забыть про тебя.
-				Ты прекрасна, красива, нежна и мила,
-				И хочется, чтоб счастлива жизнь была у тебя.
-				Ты — солнце в моих темных ночах,
-				И в будущем будем сидеть при свечах,
-				Смотря на луну и думая в час,
-				Как однажды влюбились два сердца подчас.</p>
-				<button class="btn-close-princess" id="closePrincess">Закрыть</button>
-			</div>
-		</div>
+    // DOM элементы
+    const btnCreateRoom = document.getElementById('btn-create-room');
+    const btnJoinRoom = document.getElementById('btn-join-room');
+    const joinRoomIdInput = document.getElementById('join-room-id');
+    const roomIdDisplay = document.getElementById('room-id-display');
+    const connectionStatus = document.getElementById('connection-status');
+    const videoUrlInput = document.getElementById('video-url');
+    const btnLoadVideo = document.getElementById('btn-load-video');
+    const btnPlayPause = document.getElementById('btn-play-pause');
+    const seekSlider = document.getElementById('seek-slider');
+    const timeDisplay = document.getElementById('time-display');
+    const btnSyncNow = document.getElementById('btn-sync-now');
 
-		<!-- ─── SCRIPTS ─── -->
-		<script>
-			(function() {
-            'use strict';
-
-            const noBtn = document.getElementById('btnNo');
-            const yesBtn = document.getElementById('btnYes');
-            const container = document.getElementById('buttonContainer');
-            const celebration = document.getElementById('celebration');
-            const resetBtn = document.getElementById('btnReset');
-            const princessModal = document.getElementById('princessModal');
-            const closePrincessBtn = document.getElementById('closePrincess');
-
-            // ── состояние ──
-            let isFloating = false;
-
-            // ── получить случайные координаты в пределах окна ──
-            function getRandomCoords(btnEl) {
-                const btnW = btnEl.offsetWidth || 130;
-                const btnH = btnEl.offsetHeight || 70;
-                const winW = window.innerWidth;
-                const winH = window.innerHeight;
-                const margin = 15;
-                let left = Math.random() * (winW - btnW - margin * 2) + margin;
-                let top = Math.random() * (winH - btnH - margin * 2) + margin;
-                left = Math.max(margin, Math.min(left, winW - btnW - margin));
-                top = Math.max(margin, Math.min(top, winH - btnH - margin));
-                return { left, top };
+    // ==================== ИНИЦИАЛИЗАЦИЯ YOUTUBE PLAYER ====================
+    function onYouTubeIframeAPIReady() {
+        player = new YT.Player('player', {
+            height: '100%',
+            width: '100%',
+            videoId: '', // изначально пусто
+            playerVars: {
+                'autoplay': 0,
+                'controls': 1,
+                'rel': 0,
+                'modestbranding': 1,
+            },
+            events: {
+                'onReady': onPlayerReady,
+                'onStateChange': onPlayerStateChange,
             }
+        });
+    }
 
-            // ── переключить в режим fixed и переместить ──
-            function makeFloatingAndMove() {
-                if (isFloating) {
-                    const { left, top } = getRandomCoords(noBtn);
-                    noBtn.style.left = left + 'px';
-                    noBtn.style.top = top + 'px';
-                    noBtn.style.transform = 'scale(1)';
-                    return;
-                }
+    function onPlayerReady() {
+        playerReady = true;
+        console.log('YouTube Player готов');
+        updateSliderFromPlayer();
+        // запускаем обновление слайдера каждые 500 мс
+        setInterval(updateSliderFromPlayer, 500);
+    }
 
-                const rect = noBtn.getBoundingClientRect();
-                const left = rect.left;
-                const top = rect.top;
+    function onPlayerStateChange(event) {
+        if (isApplyingRemote) return; // если изменение вызвано удалённой командой, не отправляем обратно
 
-                noBtn.classList.add('btn-no-floating');
-                noBtn.style.left = left + 'px';
-                noBtn.style.top = top + 'px';
-                noBtn.style.transform = 'scale(1)';
-
-                isFloating = true;
-
-                requestAnimationFrame(() => {
-                    const newPos = getRandomCoords(noBtn);
-                    noBtn.style.left = newPos.left + 'px';
-                    noBtn.style.top = newPos.top + 'px';
-                });
+        // Отправляем состояние партнёру только если мы подключены и управление локальное
+        if (conn && conn.open && playerReady) {
+            if (event.data === YT.PlayerState.PLAYING) {
+                sendCommand({ type: 'play', currentTime: player.getCurrentTime() });
+            } else if (event.data === YT.PlayerState.PAUSED) {
+                sendCommand({ type: 'pause', currentTime: player.getCurrentTime() });
             }
+        }
 
-            // ── вернуть в исходное состояние (в поток) ──
-            function resetNoButton() {
-                if (isFloating) {
-                    noBtn.classList.remove('btn-no-floating');
-                    noBtn.style.left = '';
-                    noBtn.style.top = '';
-                    noBtn.style.transform = '';
-                    isFloating = false;
-                }
+        // Обновляем кнопку play/pause
+        updatePlayPauseButton();
+    }
+
+    function updatePlayPauseButton() {
+        if (!player || !playerReady) return;
+        const state = player.getPlayerState();
+        if (state === YT.PlayerState.PLAYING) {
+            btnPlayPause.textContent = '⏸ Pause';
+        } else {
+            btnPlayPause.textContent = '▶ Play';
+        }
+    }
+
+    // ==================== ФУНКЦИИ ДЛЯ ВИДЕО ====================
+    function extractYouTubeId(url) {
+        if (!url) return null;
+        const patterns = [
+            /(?:youtube\.com\/watch\?v=)([^&\s]+)/,
+            /(?:youtu\.be\/)([^?\s]+)/,
+            /(?:youtube\.com\/embed\/)([^?\s]+)/,
+            /(?:youtube\.com\/shorts\/)([^?\s]+)/
+        ];
+        for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match && match[1]) return match[1];
+        }
+        // Если строка уже является ID (11 символов)
+        if (/^[a-zA-Z0-9_-]{11}$/.test(url.trim())) return url.trim();
+        return null;
+    }
+
+    function loadVideo(videoId, startTime = 0) {
+        if (!player || !playerReady) {
+            console.warn('Плеер ещё не готов');
+            return;
+        }
+        if (!videoId) return;
+
+        currentVideoId = videoId;
+        if (startTime > 0) {
+            player.loadVideoById({ videoId: videoId, startSeconds: startTime });
+        } else {
+            player.loadVideoById(videoId);
+        }
+        updatePlayPauseButton();
+    }
+
+    function updateSliderFromPlayer() {
+        if (!player || !playerReady || typeof player.getCurrentTime !== 'function') return;
+        try {
+            const currentTime = player.getCurrentTime() || 0;
+            const duration = player.getDuration() || 0;
+            if (duration > 0) {
+                seekSlider.max = duration;
+                seekSlider.value = currentTime;
+                timeDisplay.textContent = formatTime(currentTime) + ' / ' + formatTime(duration);
             }
+        } catch (e) {
+            // ignore
+        }
+    }
 
-            // ── обработчик наведения на "Нет" ──
-            function onNoHover(e) {
-                e.preventDefault();
-                if (celebration.classList.contains('show')) return;
-                if (princessModal.classList.contains('show')) return;
-                makeFloatingAndMove();
+    function formatTime(seconds) {
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60);
+        return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    // ==================== PEERJS / КОМНАТА ====================
+    function initPeer() {
+        // Создаём Peer с дефолтным облачным сервером PeerJS
+        // Если нужен свой сервер, можно указать: new Peer({ host: 'your-host', port: 443, secure: true })
+        peer = new Peer({
+            debug: 2 // логи в консоль
+        });
+
+        peer.on('open', (id) => {
+            console.log('Мой Peer ID:', id);
+            if (isHost) {
+                roomIdDisplay.textContent = id;
+                connectionStatus.textContent = 'Ожидание гостя...';
+                connectionStatus.className = 'status disconnected';
             }
+        });
 
-            // ── YES click ──
-            function onYesClick() {
-                celebration.classList.add('show');
-                spawnSparkles();
+        peer.on('connection', (incomingConn) => {
+            if (isHost && !conn) {
+                conn = incomingConn;
+                setupConnection(conn);
+                connectionStatus.textContent = 'Гость подключён!';
+                connectionStatus.className = 'status connected';
+                // Отправляем текущее состояние гостю
+                sendCurrentState();
+            } else {
+                // Отклоняем, если уже есть соединение или мы не хост
+                incomingConn.on('open', () => incomingConn.close());
             }
+        });
 
-            // ── закрыть праздничное окно (без открытия нового) ──
-            function closeCelebration() {
-                celebration.classList.remove('show');
-                resetNoButton();
+        peer.on('error', (err) => {
+            console.error('PeerJS ошибка:', err);
+            alert('Ошибка PeerJS: ' + err.type);
+        });
+    }
+
+    function setupConnection(connection) {
+        connection.on('open', () => {
+            console.log('Соединение установлено');
+            connectionStatus.textContent = 'Соединено';
+            connectionStatus.className = 'status connected';
+            // Если мы гость, запрашиваем текущее состояние
+            if (!isHost) {
+                sendCommand({ type: 'request_state' });
             }
+        });
 
-            // ── открыть окошко "принцесса" ──
-            function openPrincess() {
-                // закрываем праздничное окно
-                celebration.classList.remove('show');
-                // показываем новое
-                princessModal.classList.add('show');
-            }
+        connection.on('data', (data) => {
+            handleIncomingData(data);
+        });
 
-            // ── закрыть окошко "принцесса" ──
-            function closePrincess() {
-                princessModal.classList.remove('show');
-            }
+        connection.on('close', () => {
+            console.log('Соединение закрыто');
+            connectionStatus.textContent = 'Не подключено';
+            connectionStatus.className = 'status disconnected';
+            conn = null;
+        });
 
-            // ── sparkles ──
-            function spawnSparkles() {
-                const emojis = [''];
-                for (let i = 0; i < 36; i++) {
-                    const el = document.createElement('div');
-                    el.className = 'sparkle';
-                    el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-                    const x = Math.random() * window.innerWidth;
-                    const y = Math.random() * window.innerHeight * 0.6 + window.innerHeight * 0.1;
-                    el.style.left = x + 'px';
-                    el.style.top = y + 'px';
-                    const tx = (Math.random() - 0.5) * 400;
-                    const ty = (Math.random() - 0.5) * 400 - 100;
-                    el.style.setProperty('--tx', tx + 'px');
-                    el.style.setProperty('--ty', ty + 'px');
-                    el.style.fontSize = (1.2 + Math.random() * 2) + 'rem';
-                    el.style.animationDuration = (0.8 + Math.random() * 0.8) + 's';
-                    document.body.appendChild(el);
-                    setTimeout(() => el.remove(), 1800);
-                }
-            }
+        connection.on('error', (err) => {
+            console.error('Ошибка соединения:', err);
+            connectionStatus.textContent = 'Ошибка соединения';
+            connectionStatus.className = 'status disconnected';
+        });
+    }
 
-            // ── привязка событий ──
+    function handleIncomingData(data) {
+        if (!data) return;
 
-            // "Нет" – наведение
-            noBtn.addEventListener('mouseenter', onNoHover);
-            noBtn.addEventListener('touchstart', function(e) {
-                e.preventDefault();
-                if (celebration.classList.contains('show')) return;
-                if (princessModal.classList.contains('show')) return;
-                makeFloatingAndMove();
-            }, { passive: false });
-
-            // "Да"
-            yesBtn.addEventListener('click', onYesClick);
-
-            // "Прочитать" – открываем окошко принцессы
-            resetBtn.addEventListener('click', openPrincess);
-
-            // Закрытие окошка принцессы по кнопке или клику на фон
-            closePrincessBtn.addEventListener('click', closePrincess);
-            princessModal.addEventListener('click', function(e) {
-                if (e.target === princessModal) closePrincess();
-            });
-
-            // Закрытие праздничного окна по клику вне или Esc
-            celebration.addEventListener('click', function(e) {
-                if (e.target === celebration) closeCelebration();
-            });
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    if (celebration.classList.contains('show')) closeCelebration();
-                    if (princessModal.classList.contains('show')) closePrincess();
-                }
-            });
-
-            // ── при изменении размера окна корректируем позицию "Нет" ──
-            let resizeTimer;
-            window.addEventListener('resize', function() {
-                clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(() => {
-                    if (!isFloating || celebration.classList.contains('show')) return;
-                    const rect = noBtn.getBoundingClientRect();
-                    const winW = window.innerWidth;
-                    const winH = window.innerHeight;
-                    const margin = 15;
-                    let left = parseFloat(noBtn.style.left) || 0;
-                    let top = parseFloat(noBtn.style.top) || 0;
-                    const btnW = rect.width || 130;
-                    const btnH = rect.height || 70;
-                    let newLeft = left;
-                    let newTop = top;
-                    if (left + btnW > winW - margin) newLeft = winW - btnW - margin;
-                    if (left < margin) newLeft = margin;
-                    if (top + btnH > winH - margin) newTop = winH - btnH - margin;
-                    if (top < margin) newTop = margin;
-                    if (newLeft !== left || newTop !== top) {
-                        noBtn.style.left = newLeft + 'px';
-                        noBtn.style.top = newTop + 'px';
+        isApplyingRemote = true;
+        try {
+            switch (data.type) {
+                case 'play':
+                    if (player && playerReady && data.currentTime !== undefined) {
+                        player.seekTo(data.currentTime, true);
+                        player.playVideo();
                     }
-                }, 200);
-            });
+                    break;
+                case 'pause':
+                    if (player && playerReady && data.currentTime !== undefined) {
+                        player.seekTo(data.currentTime, true);
+                        player.pauseVideo();
+                    }
+                    break;
+                case 'seek':
+                    if (player && playerReady && data.currentTime !== undefined) {
+                        player.seekTo(data.currentTime, true);
+                    }
+                    break;
+                case 'load_video':
+                    if (data.videoId) {
+                        loadVideo(data.videoId, data.currentTime || 0);
+                    }
+                    break;
+                case 'sync_state':
+                    // Полное состояние
+                    if (data.videoId) {
+                        loadVideo(data.videoId, data.currentTime || 0);
+                        if (data.isPlaying) {
+                            player.playVideo();
+                        } else {
+                            player.pauseVideo();
+                        }
+                    }
+                    break;
+                case 'request_state':
+                    // Хост получил запрос состояния от гостя
+                    if (isHost) {
+                        sendCurrentState();
+                    }
+                    break;
+            }
+        } finally {
+            // Сбрасываем флаг после небольшой задержки, чтобы успели обработаться события плеера
+            setTimeout(() => { isApplyingRemote = false; }, 100);
+        }
+        updatePlayPauseButton();
+    }
 
-            console.log('😺 Наведи на "Нет" — она убежит по всему экрану!');
-        })();
-		</script>
+    function sendCommand(data) {
+        if (conn && conn.open) {
+            conn.send(data);
+        }
+    }
 
+    function sendCurrentState() {
+        if (!isHost || !conn || !conn.open || !player || !playerReady) return;
+        const state = {
+            type: 'sync_state',
+            videoId: currentVideoId,
+            currentTime: player.getCurrentTime() || 0,
+            isPlaying: player.getPlayerState() === YT.PlayerState.PLAYING
+        };
+        conn.send(state);
+    }
+
+    // ==================== ОБРАБОТЧИКИ КНОПОК ====================
+    btnCreateRoom.addEventListener('click', () => {
+        if (peer) {
+            peer.destroy();
+        }
+        isHost = true;
+        conn = null;
+        initPeer();
+        btnCreateRoom.disabled = true;
+        btnJoinRoom.disabled = false;
+        joinRoomIdInput.disabled = false;
+        roomIdDisplay.textContent = '...';
+        connectionStatus.textContent = 'Создание...';
+    });
+
+    btnJoinRoom.addEventListener('click', () => {
+        const hostId = joinRoomIdInput.value.trim();
+        if (!hostId) {
+            alert('Введите ID комнаты');
+            return;
+        }
+        if (peer) {
+            peer.destroy();
+        }
+        isHost = false;
+        initPeer();
+        // Подключаемся после открытия peer
+        peer.on('open', () => {
+            const connection = peer.connect(hostId, { reliable: true });
+            conn = connection;
+            setupConnection(connection);
+        });
+        btnJoinRoom.disabled = true;
+        btnCreateRoom.disabled = false;
+        connectionStatus.textContent = 'Подключение...';
+        connectionStatus.className = 'status disconnected';
+    });
+
+    btnLoadVideo.addEventListener('click', () => {
+        const url = videoUrlInput.value.trim();
+        const videoId = extractYouTubeId(url);
+        if (!videoId) {
+            alert('Не удалось распознать ссылку YouTube');
+            return;
+        }
+        // Загружаем видео локально
+        loadVideo(videoId, 0);
+        // Отправляем партнёру
+        sendCommand({ type: 'load_video', videoId: videoId, currentTime: 0 });
+    });
+
+    btnPlayPause.addEventListener('click', () => {
+        if (!player || !playerReady) return;
+        const state = player.getPlayerState();
+        if (state === YT.PlayerState.PLAYING) {
+            player.pauseVideo();
+            // событие onStateChange отправит pause
+        } else {
+            player.playVideo();
+            // событие onStateChange отправит play
+        }
+    });
+
+    seekSlider.addEventListener('change', () => {
+        if (!player || !playerReady) return;
+        const newTime = parseFloat(seekSlider.value);
+        player.seekTo(newTime, true);
+        // Отправляем команду seek
+        sendCommand({ type: 'seek', currentTime: newTime });
+    });
+
+    btnSyncNow.addEventListener('click', () => {
+        if (isHost) {
+            sendCurrentState();
+            alert('Состояние отправлено гостю');
+        } else if (conn && conn.open) {
+            // Гость запрашивает состояние у хоста
+            sendCommand({ type: 'request_state' });
+            alert('Запрос отправлен хосту');
+        } else {
+            alert('Нет соединения');
+        }
+    });
+
+    // ==================== ИНИЦИАЛИЗАЦИЯ ====================
+    // Ждём загрузки YouTube API
+    // Функция onYouTubeIframeAPIReady вызывается автоматически
+</script>
 </body>
-
 </html>
