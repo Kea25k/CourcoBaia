@@ -235,360 +235,356 @@
 <script src="https://www.youtube.com/iframe_api"></script>
 
 <script>
-    // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
-    let peer = null;
-    let conn = null;
-    let isHost = false;
-    let player = null;
-    let playerReady = false;
-    let currentVideoId = null;
-    let isApplyingRemote = false; // флаг, чтобы не зациклить синхронизацию
-    let updateInterval = null;
+   // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
+let peer = null;
+let conn = null;
+let isHost = false;
+let player = null;
+let playerReady = false;
+let currentVideoId = null;
+let isApplyingRemote = false;
+let updateInterval = null;
+let pendingCommands = []; // очередь команд, ожидающих готовности плеера
+let pendingOutgoing = [];  // очередь исходящих команд до открытия соединения
 
-    // DOM элементы
-    const btnCreateRoom = document.getElementById('btn-create-room');
-    const btnJoinRoom = document.getElementById('btn-join-room');
-    const joinRoomIdInput = document.getElementById('join-room-id');
-    const roomIdDisplay = document.getElementById('room-id-display');
-    const connectionStatus = document.getElementById('connection-status');
-    const videoUrlInput = document.getElementById('video-url');
-    const btnLoadVideo = document.getElementById('btn-load-video');
-    const btnPlayPause = document.getElementById('btn-play-pause');
-    const seekSlider = document.getElementById('seek-slider');
-    const timeDisplay = document.getElementById('time-display');
-    const btnSyncNow = document.getElementById('btn-sync-now');
+// DOM элементы
+const btnCreateRoom = document.getElementById('btn-create-room');
+const btnJoinRoom = document.getElementById('btn-join-room');
+const joinRoomIdInput = document.getElementById('join-room-id');
+const roomIdDisplay = document.getElementById('room-id-display');
+const connectionStatus = document.getElementById('connection-status');
+const videoUrlInput = document.getElementById('video-url');
+const btnLoadVideo = document.getElementById('btn-load-video');
+const btnPlayPause = document.getElementById('btn-play-pause');
+const seekSlider = document.getElementById('seek-slider');
+const timeDisplay = document.getElementById('time-display');
+const btnSyncNow = document.getElementById('btn-sync-now');
 
-    // ==================== ИНИЦИАЛИЗАЦИЯ YOUTUBE PLAYER ====================
-    function onYouTubeIframeAPIReady() {
-        player = new YT.Player('player', {
-            height: '100%',
-            width: '100%',
-            videoId: '', // изначально пусто
-            playerVars: {
-                'autoplay': 0,
-                'controls': 1,
-                'rel': 0,
-                'modestbranding': 1,
-            },
-            events: {
-                'onReady': onPlayerReady,
-                'onStateChange': onPlayerStateChange,
-            }
-        });
-    }
-
-    function onPlayerReady() {
-        playerReady = true;
-        console.log('YouTube Player готов');
-        updateSliderFromPlayer();
-        // запускаем обновление слайдера каждые 500 мс
-        setInterval(updateSliderFromPlayer, 500);
-    }
-
-    function onPlayerStateChange(event) {
-        if (isApplyingRemote) return; // если изменение вызвано удалённой командой, не отправляем обратно
-
-        // Отправляем состояние партнёру только если мы подключены и управление локальное
-        if (conn && conn.open && playerReady) {
-            if (event.data === YT.PlayerState.PLAYING) {
-                sendCommand({ type: 'play', currentTime: player.getCurrentTime() });
-            } else if (event.data === YT.PlayerState.PAUSED) {
-                sendCommand({ type: 'pause', currentTime: player.getCurrentTime() });
-            }
+// ==================== ИНИЦИАЛИЗАЦИЯ YOUTUBE PLAYER ====================
+function onYouTubeIframeAPIReady() {
+    player = new YT.Player('player', {
+        height: '100%',
+        width: '100%',
+        videoId: '',
+        playerVars: {
+            'autoplay': 0,
+            'controls': 1,
+            'rel': 0,
+            'modestbranding': 1,
+        },
+        events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange,
         }
+    });
+}
 
-        // Обновляем кнопку play/pause
-        updatePlayPauseButton();
+function onPlayerReady() {
+    playerReady = true;
+    console.log('YouTube Player готов');
+    updateSliderFromPlayer();
+    setInterval(updateSliderFromPlayer, 500);
+    // Применяем все отложенные команды
+    while (pendingCommands.length > 0) {
+        const cmd = pendingCommands.shift();
+        handleIncomingData(cmd);
     }
+}
 
-    function updatePlayPauseButton() {
-        if (!player || !playerReady) return;
-        const state = player.getPlayerState();
-        if (state === YT.PlayerState.PLAYING) {
-            btnPlayPause.textContent = '⏸ Pause';
-        } else {
-            btnPlayPause.textContent = '▶ Play';
+function onPlayerStateChange(event) {
+    if (isApplyingRemote) return;
+    if (conn && conn.open && playerReady) {
+        if (event.data === YT.PlayerState.PLAYING) {
+            sendCommand({ type: 'play', currentTime: player.getCurrentTime() });
+        } else if (event.data === YT.PlayerState.PAUSED) {
+            sendCommand({ type: 'pause', currentTime: player.getCurrentTime() });
         }
     }
+    updatePlayPauseButton();
+}
 
-    // ==================== ФУНКЦИИ ДЛЯ ВИДЕО ====================
-    function extractYouTubeId(url) {
-        if (!url) return null;
-        const patterns = [
-            /(?:youtube\.com\/watch\?v=)([^&\s]+)/,
-            /(?:youtu\.be\/)([^?\s]+)/,
-            /(?:youtube\.com\/embed\/)([^?\s]+)/,
-            /(?:youtube\.com\/shorts\/)([^?\s]+)/
-        ];
-        for (const pattern of patterns) {
-            const match = url.match(pattern);
-            if (match && match[1]) return match[1];
+function updatePlayPauseButton() {
+    if (!player || !playerReady) return;
+    const state = player.getPlayerState();
+    btnPlayPause.textContent = (state === YT.PlayerState.PLAYING) ? '⏸ Pause' : '▶ Play';
+}
+
+// ==================== ФУНКЦИИ ДЛЯ ВИДЕО ====================
+function extractYouTubeId(url) {
+    if (!url) return null;
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=)([^&\s]+)/,
+        /(?:youtu\.be\/)([^?\s]+)/,
+        /(?:youtube\.com\/embed\/)([^?\s]+)/,
+        /(?:youtube\.com\/shorts\/)([^?\s]+)/
+    ];
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) return match[1];
+    }
+    if (/^[a-zA-Z0-9_-]{11}$/.test(url.trim())) return url.trim();
+    return null;
+}
+
+function loadVideo(videoId, startTime = 0) {
+    if (!player || !playerReady) {
+        console.warn('loadVideo: плеер не готов, команда поставлена в очередь');
+        pendingCommands.push({ type: 'load_video', videoId, currentTime: startTime });
+        return;
+    }
+    if (!videoId) return;
+    currentVideoId = videoId;
+    if (startTime > 0) {
+        player.loadVideoById({ videoId: videoId, startSeconds: startTime });
+    } else {
+        player.loadVideoById(videoId);
+    }
+    updatePlayPauseButton();
+}
+
+function updateSliderFromPlayer() {
+    if (!player || !playerReady || typeof player.getCurrentTime !== 'function') return;
+    try {
+        const currentTime = player.getCurrentTime() || 0;
+        const duration = player.getDuration() || 0;
+        if (duration > 0) {
+            seekSlider.max = duration;
+            seekSlider.value = currentTime;
+            timeDisplay.textContent = formatTime(currentTime) + ' / ' + formatTime(duration);
         }
-        // Если строка уже является ID (11 символов)
-        if (/^[a-zA-Z0-9_-]{11}$/.test(url.trim())) return url.trim();
-        return null;
-    }
+    } catch (e) {}
+}
 
-    function loadVideo(videoId, startTime = 0) {
-        if (!player || !playerReady) {
-            console.warn('Плеер ещё не готов');
-            return;
-        }
-        if (!videoId) return;
+function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return m + ':' + (s < 10 ? '0' : '') + s;
+}
 
-        currentVideoId = videoId;
-        if (startTime > 0) {
-            player.loadVideoById({ videoId: videoId, startSeconds: startTime });
-        } else {
-            player.loadVideoById(videoId);
-        }
-        updatePlayPauseButton();
-    }
-
-    function updateSliderFromPlayer() {
-        if (!player || !playerReady || typeof player.getCurrentTime !== 'function') return;
-        try {
-            const currentTime = player.getCurrentTime() || 0;
-            const duration = player.getDuration() || 0;
-            if (duration > 0) {
-                seekSlider.max = duration;
-                seekSlider.value = currentTime;
-                timeDisplay.textContent = formatTime(currentTime) + ' / ' + formatTime(duration);
-            }
-        } catch (e) {
-            // ignore
-        }
-    }
-
-    function formatTime(seconds) {
-        const m = Math.floor(seconds / 60);
-        const s = Math.floor(seconds % 60);
-        return m + ':' + (s < 10 ? '0' : '') + s;
-    }
-
-    // ==================== PEERJS / КОМНАТА ====================
-    function initPeer() {
-        // Создаём Peer с дефолтным облачным сервером PeerJS
-        // Если нужен свой сервер, можно указать: new Peer({ host: 'your-host', port: 443, secure: true })
-        peer = new Peer({
-            debug: 2 // логи в консоль
-        });
-
-        peer.on('open', (id) => {
-            console.log('Мой Peer ID:', id);
-            if (isHost) {
-                roomIdDisplay.textContent = id;
-                connectionStatus.textContent = 'Ожидание гостя...';
-                connectionStatus.className = 'status disconnected';
-            }
-        });
-
-        peer.on('connection', (incomingConn) => {
-            if (isHost && !conn) {
-                conn = incomingConn;
-                setupConnection(conn);
-                connectionStatus.textContent = 'Гость подключён!';
-                connectionStatus.className = 'status connected';
-                // Отправляем текущее состояние гостю
-                sendCurrentState();
-            } else {
-                // Отклоняем, если уже есть соединение или мы не хост
-                incomingConn.on('open', () => incomingConn.close());
-            }
-        });
-
-        peer.on('error', (err) => {
-            console.error('PeerJS ошибка:', err);
-            alert('Ошибка PeerJS: ' + err.type);
-        });
-    }
-
-    function setupConnection(connection) {
-        connection.on('open', () => {
-            console.log('Соединение установлено');
-            connectionStatus.textContent = 'Соединено';
-            connectionStatus.className = 'status connected';
-            // Если мы гость, запрашиваем текущее состояние
-            if (!isHost) {
-                sendCommand({ type: 'request_state' });
-            }
-        });
-
-        connection.on('data', (data) => {
-            handleIncomingData(data);
-        });
-
-        connection.on('close', () => {
-            console.log('Соединение закрыто');
-            connectionStatus.textContent = 'Не подключено';
+// ==================== PEERJS / КОМНАТА ====================
+function initPeer() {
+    peer = new Peer({ debug: 2 });
+    peer.on('open', (id) => {
+        console.log('Мой Peer ID:', id);
+        if (isHost) {
+            roomIdDisplay.textContent = id;
+            connectionStatus.textContent = 'Ожидание гостя...';
             connectionStatus.className = 'status disconnected';
-            conn = null;
-        });
-
-        connection.on('error', (err) => {
-            console.error('Ошибка соединения:', err);
-            connectionStatus.textContent = 'Ошибка соединения';
-            connectionStatus.className = 'status disconnected';
-        });
-    }
-
-    function handleIncomingData(data) {
-        if (!data) return;
-
-        isApplyingRemote = true;
-        try {
-            switch (data.type) {
-                case 'play':
-                    if (player && playerReady && data.currentTime !== undefined) {
-                        player.seekTo(data.currentTime, true);
-                        player.playVideo();
-                    }
-                    break;
-                case 'pause':
-                    if (player && playerReady && data.currentTime !== undefined) {
-                        player.seekTo(data.currentTime, true);
-                        player.pauseVideo();
-                    }
-                    break;
-                case 'seek':
-                    if (player && playerReady && data.currentTime !== undefined) {
-                        player.seekTo(data.currentTime, true);
-                    }
-                    break;
-                case 'load_video':
-                    if (data.videoId) {
-                        loadVideo(data.videoId, data.currentTime || 0);
-                    }
-                    break;
-                case 'sync_state':
-                    // Полное состояние
-                    if (data.videoId) {
-                        loadVideo(data.videoId, data.currentTime || 0);
-                        if (data.isPlaying) {
-                            player.playVideo();
-                        } else {
-                            player.pauseVideo();
-                        }
-                    }
-                    break;
-                case 'request_state':
-                    // Хост получил запрос состояния от гостя
-                    if (isHost) {
-                        sendCurrentState();
-                    }
-                    break;
+        } else {
+            // Если мы гость, после открытия пытаемся подключиться (если ещё не подключены)
+            const hostId = joinRoomIdInput.value.trim();
+            if (hostId && !conn) {
+                const connection = peer.connect(hostId, { reliable: true });
+                conn = connection;
+                setupConnection(connection);
             }
-        } finally {
-            // Сбрасываем флаг после небольшой задержки, чтобы успели обработаться события плеера
-            setTimeout(() => { isApplyingRemote = false; }, 100);
         }
-        updatePlayPauseButton();
-    }
-
-    function sendCommand(data) {
-        if (conn && conn.open) {
-            conn.send(data);
-        }
-    }
-
-    function sendCurrentState() {
-        if (!isHost || !conn || !conn.open || !player || !playerReady) return;
-        const state = {
-            type: 'sync_state',
-            videoId: currentVideoId,
-            currentTime: player.getCurrentTime() || 0,
-            isPlaying: player.getPlayerState() === YT.PlayerState.PLAYING
-        };
-        conn.send(state);
-    }
-
-    // ==================== ОБРАБОТЧИКИ КНОПОК ====================
-    btnCreateRoom.addEventListener('click', () => {
-        if (peer) {
-            peer.destroy();
-        }
-        isHost = true;
-        conn = null;
-        initPeer();
-        btnCreateRoom.disabled = true;
-        btnJoinRoom.disabled = false;
-        joinRoomIdInput.disabled = false;
-        roomIdDisplay.textContent = '...';
-        connectionStatus.textContent = 'Создание...';
     });
 
-    btnJoinRoom.addEventListener('click', () => {
-        const hostId = joinRoomIdInput.value.trim();
-        if (!hostId) {
-            alert('Введите ID комнаты');
-            return;
+    peer.on('connection', (incomingConn) => {
+        if (isHost && !conn) {
+            conn = incomingConn;
+            setupConnection(conn);
+            connectionStatus.textContent = 'Гость подключён!';
+            connectionStatus.className = 'status connected';
+            sendCurrentState();
+        } else {
+            incomingConn.on('open', () => incomingConn.close());
         }
-        if (peer) {
-            peer.destroy();
+    });
+
+    peer.on('error', (err) => {
+        console.error('PeerJS ошибка:', err);
+        alert('Ошибка PeerJS: ' + err.type);
+    });
+}
+
+function setupConnection(connection) {
+    connection.on('open', () => {
+        console.log('Соединение установлено');
+        connectionStatus.textContent = 'Соединено';
+        connectionStatus.className = 'status connected';
+        // Отправляем все накопленные исходящие команды
+        while (pendingOutgoing.length > 0) {
+            const cmd = pendingOutgoing.shift();
+            connection.send(cmd);
         }
-        isHost = false;
-        initPeer();
-        // Подключаемся после открытия peer
-        peer.on('open', () => {
-            const connection = peer.connect(hostId, { reliable: true });
-            conn = connection;
-            setupConnection(connection);
-        });
-        btnJoinRoom.disabled = true;
-        btnCreateRoom.disabled = false;
-        connectionStatus.textContent = 'Подключение...';
+        if (!isHost) {
+            sendCommand({ type: 'request_state' });
+        }
+    });
+
+    connection.on('data', (data) => {
+        console.log('Получены данные:', data);
+        handleIncomingData(data);
+    });
+
+    connection.on('close', () => {
+        console.log('Соединение закрыто');
+        connectionStatus.textContent = 'Не подключено';
+        connectionStatus.className = 'status disconnected';
+        conn = null;
+    });
+
+    connection.on('error', (err) => {
+        console.error('Ошибка соединения:', err);
+        connectionStatus.textContent = 'Ошибка соединения';
         connectionStatus.className = 'status disconnected';
     });
+}
 
-    btnLoadVideo.addEventListener('click', () => {
-        const url = videoUrlInput.value.trim();
-        const videoId = extractYouTubeId(url);
-        if (!videoId) {
-            alert('Не удалось распознать ссылку YouTube');
-            return;
+function handleIncomingData(data) {
+    if (!data) return;
+    // Если команда требует плеера, а он не готов — ставим в очередь
+    if (!playerReady && ['play', 'pause', 'seek', 'load_video', 'sync_state'].includes(data.type)) {
+        console.log('handleIncomingData: плеер не готов, команда в очередь', data);
+        pendingCommands.push(data);
+        return;
+    }
+
+    isApplyingRemote = true;
+    try {
+        switch (data.type) {
+            case 'play':
+                if (player && playerReady && data.currentTime !== undefined) {
+                    player.seekTo(data.currentTime, true);
+                    player.playVideo();
+                }
+                break;
+            case 'pause':
+                if (player && playerReady && data.currentTime !== undefined) {
+                    player.seekTo(data.currentTime, true);
+                    player.pauseVideo();
+                }
+                break;
+            case 'seek':
+                if (player && playerReady && data.currentTime !== undefined) {
+                    player.seekTo(data.currentTime, true);
+                }
+                break;
+            case 'load_video':
+                if (data.videoId) {
+                    loadVideo(data.videoId, data.currentTime || 0);
+                }
+                break;
+            case 'sync_state':
+                if (data.videoId) {
+                    loadVideo(data.videoId, data.currentTime || 0);
+                    if (data.isPlaying) {
+                        player.playVideo();
+                    } else {
+                        player.pauseVideo();
+                    }
+                }
+                break;
+            case 'request_state':
+                if (isHost) sendCurrentState();
+                break;
         }
-        // Загружаем видео локально
-        loadVideo(videoId, 0);
-        // Отправляем партнёру
-        sendCommand({ type: 'load_video', videoId: videoId, currentTime: 0 });
-    });
+    } finally {
+        setTimeout(() => { isApplyingRemote = false; }, 100);
+    }
+    updatePlayPauseButton();
+}
 
-    btnPlayPause.addEventListener('click', () => {
-        if (!player || !playerReady) return;
-        const state = player.getPlayerState();
-        if (state === YT.PlayerState.PLAYING) {
-            player.pauseVideo();
-            // событие onStateChange отправит pause
-        } else {
-            player.playVideo();
-            // событие onStateChange отправит play
-        }
-    });
+function sendCommand(data) {
+    console.log('Попытка отправки команды:', data, 'conn.open =', conn ? conn.open : false);
+    if (conn && conn.open) {
+        conn.send(data);
+    } else if (conn && !conn.open) {
+        // Соединение ещё не открыто, кладём в очередь
+        console.log('Соединение ещё не открыто, команда в очередь отправки');
+        pendingOutgoing.push(data);
+    } else {
+        console.warn('Нет активного соединения, команда не отправлена');
+    }
+}
 
-    seekSlider.addEventListener('change', () => {
-        if (!player || !playerReady) return;
-        const newTime = parseFloat(seekSlider.value);
-        player.seekTo(newTime, true);
-        // Отправляем команду seek
-        sendCommand({ type: 'seek', currentTime: newTime });
-    });
+function sendCurrentState() {
+    if (!isHost || !conn || !conn.open || !player || !playerReady) return;
+    const state = {
+        type: 'sync_state',
+        videoId: currentVideoId,
+        currentTime: player.getCurrentTime() || 0,
+        isPlaying: player.getPlayerState() === YT.PlayerState.PLAYING
+    };
+    conn.send(state);
+}
 
-    btnSyncNow.addEventListener('click', () => {
-        if (isHost) {
-            sendCurrentState();
-            alert('Состояние отправлено гостю');
-        } else if (conn && conn.open) {
-            // Гость запрашивает состояние у хоста
-            sendCommand({ type: 'request_state' });
-            alert('Запрос отправлен хосту');
-        } else {
-            alert('Нет соединения');
-        }
-    });
+// ==================== ОБРАБОТЧИКИ КНОПОК ====================
+btnCreateRoom.addEventListener('click', () => {
+    if (peer) peer.destroy();
+    isHost = true;
+    conn = null;
+    pendingOutgoing = [];
+    pendingCommands = [];
+    initPeer();
+    btnCreateRoom.disabled = true;
+    btnJoinRoom.disabled = false;
+    joinRoomIdInput.disabled = false;
+    roomIdDisplay.textContent = '...';
+    connectionStatus.textContent = 'Создание...';
+});
 
-    // ==================== ИНИЦИАЛИЗАЦИЯ ====================
-    // Ждём загрузки YouTube API
-    // Функция onYouTubeIframeAPIReady вызывается автоматически
+btnJoinRoom.addEventListener('click', () => {
+    const hostId = joinRoomIdInput.value.trim();
+    if (!hostId) {
+        alert('Введите ID комнаты');
+        return;
+    }
+    if (peer) peer.destroy();
+    isHost = false;
+    conn = null;
+    pendingOutgoing = [];
+    pendingCommands = [];
+    // Запоминаем ID хоста, будем подключаться после открытия peer
+    window.pendingHostId = hostId;
+    initPeer();
+    btnJoinRoom.disabled = true;
+    btnCreateRoom.disabled = false;
+    connectionStatus.textContent = 'Подключение...';
+    connectionStatus.className = 'status disconnected';
+});
+
+btnLoadVideo.addEventListener('click', () => {
+    const url = videoUrlInput.value.trim();
+    const videoId = extractYouTubeId(url);
+    if (!videoId) {
+        alert('Не удалось распознать ссылку YouTube');
+        return;
+    }
+    loadVideo(videoId, 0);
+    sendCommand({ type: 'load_video', videoId: videoId, currentTime: 0 });
+});
+
+btnPlayPause.addEventListener('click', () => {
+    if (!player || !playerReady) return;
+    const state = player.getPlayerState();
+    if (state === YT.PlayerState.PLAYING) {
+        player.pauseVideo();
+    } else {
+        player.playVideo();
+    }
+});
+
+seekSlider.addEventListener('change', () => {
+    if (!player || !playerReady) return;
+    const newTime = parseFloat(seekSlider.value);
+    player.seekTo(newTime, true);
+    sendCommand({ type: 'seek', currentTime: newTime });
+});
+
+btnSyncNow.addEventListener('click', () => {
+    if (isHost) {
+        sendCurrentState();
+        alert('Состояние отправлено гостю');
+    } else if (conn && conn.open) {
+        sendCommand({ type: 'request_state' });
+        alert('Запрос отправлен хосту');
+    } else {
+        alert('Нет соединения');
+    }
+});
 </script>
 </body>
 </html>
