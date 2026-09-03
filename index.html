@@ -2,9 +2,12 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
     <title>Синхронный просмотр YouTube</title>
     <link rel="icon" href="data:,">
+
     <style>
         :root {
             --bg: #1a1a2e;
@@ -13,644 +16,1204 @@
             --text: #eee;
             --muted: #aaa;
             --success: #4caf50;
-            --touch-target: 44px; /* минимальный размер для касания */
+            --touch-target: 44px;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
         body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             padding: 20px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        button,
+        input {
+            font: inherit;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
         }
 
         .container {
             width: 100%;
             max-width: 900px;
+            padding: 24px;
             background: var(--card);
             border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
 
         h1 {
-            text-align: center;
             margin-bottom: 20px;
+            color: var(--accent);
+            text-align: center;
+            font-size: 1.8rem;
             font-weight: 300;
             letter-spacing: 1px;
-            color: var(--accent);
-            font-size: 1.8rem;
         }
 
         .room-section {
             display: flex;
             flex-wrap: wrap;
-            gap: 15px;
             align-items: center;
-            background: rgba(255,255,255,0.05);
-            padding: 15px;
-            border-radius: 10px;
+            gap: 15px;
             margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
         }
 
         .room-section button {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: 0.2s;
             min-height: var(--touch-target);
+            padding: 12px 20px;
+            border: 0;
+            border-radius: 6px;
+            background: var(--accent);
+            color: #fff;
+            font-size: 16px;
+            transition: filter 0.2s;
             white-space: nowrap;
         }
-        .room-section button:hover { filter: brightness(1.2); }
-        .room-section button:disabled { background: #555; cursor: not-allowed; }
 
-        .room-id-display {
-            font-family: monospace;
-            background: #000;
-            padding: 10px 12px;
-            border-radius: 6px;
-            font-size: 16px;
-            letter-spacing: 1px;
-            user-select: all;
-            word-break: break-all;
-            max-width: 100%;
+        .room-section button:hover:not(:disabled) {
+            filter: brightness(1.2);
         }
 
         .input-group {
             display: flex;
-            gap: 10px;
-            align-items: center;
+            flex: 1 1 280px;
             flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
         }
 
         .input-group input {
-            padding: 12px;
-            border-radius: 6px;
-            border: 1px solid #444;
-            background: #0f0f1a;
-            color: var(--text);
-            font-size: 16px;  /* предотвращает зум на iOS */
+            flex: 1 1 150px;
             width: 220px;
             min-height: var(--touch-target);
+            padding: 12px;
+            border: 1px solid #444;
+            border-radius: 6px;
+            outline: none;
+            background: #0f0f1a;
+            color: var(--text);
+            font-size: 16px;
+        }
+
+        .input-group input:focus,
+        .video-url-section input:focus {
+            border-color: var(--accent);
+        }
+
+        .room-id-display {
+            max-width: 100%;
+            padding: 10px 12px;
+            overflow-wrap: anywhere;
+            border-radius: 6px;
+            background: #000;
+            color: #fff;
+            font-family: monospace;
+            font-size: 16px;
+            letter-spacing: 1px;
+            user-select: all;
         }
 
         .status {
             margin-left: auto;
             padding: 8px 15px;
             border-radius: 20px;
-            font-size: 14px;
             background: #333;
+            font-size: 14px;
             white-space: nowrap;
         }
-        .status.connected { background: var(--success); color: #000; }
-        .status.disconnected { background: #555; }
+
+        .status.connected {
+            background: var(--success);
+            color: #000;
+        }
+
+        .status.disconnected {
+            background: #555;
+        }
 
         .video-url-section {
             display: flex;
+            flex-wrap: wrap;
             gap: 10px;
             margin-bottom: 20px;
-            flex-wrap: wrap;
         }
+
         .video-url-section input {
-            flex: 1;
-            min-width: 200px;
+            flex: 1 1 250px;
+            min-height: var(--touch-target);
             padding: 14px;
-            border-radius: 8px;
             border: 1px solid #444;
+            border-radius: 8px;
+            outline: none;
             background: #0f0f1a;
             color: var(--text);
             font-size: 16px;
-            min-height: var(--touch-target);
         }
+
         .video-url-section button {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: 0.2s;
             min-height: var(--touch-target);
+            padding: 12px 25px;
+            border: 0;
+            border-radius: 8px;
+            background: #3498db;
+            color: #fff;
+            font-size: 16px;
+            transition: background 0.2s;
             white-space: nowrap;
         }
-        .video-url-section button:hover { background: #2980b9; }
+
+        .video-url-section button:hover:not(:disabled) {
+            background: #2980b9;
+        }
 
         .player-wrapper {
             position: relative;
-            padding-bottom: 56.25%;
+            width: 100%;
             height: 0;
-            background: #000;
-            border-radius: 10px;
-            overflow: hidden;
             margin-bottom: 20px;
+            padding-bottom: 56.25%;
+            overflow: hidden;
+            border-radius: 10px;
+            background: #000;
         }
+
         #player {
             position: absolute;
-            top: 0; left: 0;
+            inset: 0;
             width: 100%;
             height: 100%;
         }
 
         .controls {
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
             gap: 15px;
-            flex-wrap: wrap;
         }
+
         .controls button {
-            background: #2c3e50;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: 0.2s;
-            min-height: var(--touch-target);
             min-width: 90px;
-        }
-        .controls button:hover { background: #34495e; }
-        .controls button.primary { background: var(--accent); }
-        .controls button.primary:hover { background: #c0392b; }
-
-        .seek-slider {
-            flex: 1;
-            min-width: 150px;
-            accent-color: var(--accent);
-            cursor: pointer;
-            height: 30px;
+            min-height: var(--touch-target);
+            padding: 12px 20px;
+            border: 0;
+            border-radius: 6px;
+            background: #2c3e50;
+            color: #fff;
+            font-size: 16px;
+            transition: background 0.2s;
         }
 
-        .time-display {
-            font-family: monospace;
-            font-size: 14px;
-            color: var(--muted);
-            white-space: nowrap;
+        .controls button:hover:not(:disabled) {
+            background: #34495e;
+        }
+
+        .controls button.primary {
+            background: var(--accent);
+        }
+
+        .controls button.primary:hover:not(:disabled) {
+            background: #c0392b;
         }
 
         .sync-btn {
             background: #27ae60 !important;
         }
-        .sync-btn:hover { background: #2ecc71 !important; }
 
-        /* ---------- Мобильная адаптация ---------- */
+        .sync-btn:hover:not(:disabled) {
+            background: #2ecc71 !important;
+        }
+
+        .seek-slider {
+            flex: 1 1 150px;
+            min-width: 150px;
+            height: 30px;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        .time-display {
+            color: var(--muted);
+            font-family: monospace;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
         @media (max-width: 768px) {
-            .container { padding: 15px; }
-            h1 { font-size: 1.5rem; }
-            .room-section { flex-direction: column; align-items: stretch; }
-            .status { margin-left: 0; text-align: center; }
-            .input-group { width: 100%; }
-            .input-group input { flex: 1; width: 100%; }
-            .input-group button { flex: 1; }
-            .video-url-section { flex-direction: column; }
-            .video-url-section input { width: 100%; }
-            .video-url-section button { width: 100%; }
-            .controls { gap: 10px; }
-            .controls button { padding: 10px 15px; font-size: 15px; }
-            .seek-slider { min-width: 120px; }
+            .container {
+                padding: 15px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .room-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .input-group {
+                width: 100%;
+            }
+
+            .input-group input,
+            .input-group button {
+                width: 100%;
+                flex: 1 1 100%;
+            }
+
+            .status {
+                width: 100%;
+                margin-left: 0;
+                text-align: center;
+            }
+
+            .video-url-section {
+                flex-direction: column;
+            }
+
+            .video-url-section input,
+            .video-url-section button {
+                width: 100%;
+            }
+
+            .controls {
+                gap: 10px;
+            }
+
+            .controls button {
+                padding: 10px 15px;
+                font-size: 15px;
+            }
         }
 
         @media (max-width: 480px) {
-            body { padding: 10px; }
-            .container { padding: 10px; border-radius: 12px; }
-            h1 { font-size: 1.3rem; margin-bottom: 15px; }
-            .room-section { padding: 12px; gap: 10px; }
-            .room-section button { padding: 10px 12px; font-size: 15px; }
-            .room-id-display { font-size: 14px; padding: 8px 10px; }
-            .status { font-size: 13px; }
-            .video-url-section input { padding: 12px; font-size: 15px; }
-            .video-url-section button { padding: 12px; font-size: 15px; }
-            .controls button { min-width: 70px; padding: 10px; font-size: 14px; }
-            .time-display { font-size: 12px; }
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                padding: 10px;
+                border-radius: 12px;
+            }
+
+            h1 {
+                margin-bottom: 15px;
+                font-size: 1.3rem;
+            }
+
+            .room-section {
+                gap: 10px;
+                padding: 12px;
+            }
+
+            .room-section button {
+                padding: 10px 12px;
+                font-size: 15px;
+            }
+
+            .room-id-display {
+                padding: 8px 10px;
+                font-size: 14px;
+            }
+
+            .status {
+                font-size: 13px;
+            }
+
+            .video-url-section input,
+            .video-url-section button {
+                padding: 12px;
+                font-size: 15px;
+            }
+
+            .controls button {
+                min-width: 70px;
+                padding: 10px;
+                font-size: 14px;
+            }
+
+            .time-display {
+                font-size: 12px;
+            }
         }
     </style>
 </head>
+
 <body>
 <div class="container">
     <h1>🎬 Синхронный кинозал</h1>
 
-    <!-- Комната -->
     <div class="room-section">
-        <button id="btn-create-room">Создать комнату</button>
+        <button id="btn-create-room" type="button">Создать комнату</button>
+
         <div class="input-group">
-            <input type="text" id="join-room-id" placeholder="ID комнаты">
-            <button id="btn-join-room">Подключиться</button>
+            <input
+                id="join-room-id"
+                type="text"
+                placeholder="ID комнаты"
+                autocomplete="off"
+                spellcheck="false"
+            >
+
+            <button id="btn-join-room" type="button">
+                Подключиться
+            </button>
         </div>
-        <div class="room-id-display" id="room-id-display">—</div>
-        <span class="status disconnected" id="connection-status">Не подключено</span>
+
+        <div id="room-id-display" class="room-id-display">—</div>
+
+        <span id="connection-status" class="status disconnected">
+            Не подключено
+        </span>
     </div>
 
-    <!-- Ввод ссылки на видео -->
     <div class="video-url-section">
-        <input type="text" id="video-url" placeholder="Вставьте ссылку на YouTube видео...">
-        <button id="btn-load-video">Загрузить</button>
+        <input
+            id="video-url"
+            type="text"
+            placeholder="Вставьте ссылку на YouTube-видео..."
+            autocomplete="off"
+        >
+
+        <button id="btn-load-video" type="button">
+            Загрузить
+        </button>
     </div>
 
-    <!-- Плеер -->
     <div class="player-wrapper">
         <div id="player"></div>
     </div>
 
-    <!-- Управление -->
     <div class="controls">
-        <button id="btn-play-pause" class="primary">▶ Play</button>
-        <input type="range" id="seek-slider" class="seek-slider" min="0" max="100" step="0.1" value="0">
-        <span class="time-display" id="time-display">0:00 / 0:00</span>
-        <button id="btn-sync-now" class="sync-btn">↻ Синхр.</button>
+        <button id="btn-play-pause" class="primary" type="button">
+            ▶️ Воспроизвести
+        </button>
+
+        <input
+            id="seek-slider"
+            class="seek-slider"
+            type="range"
+            min="0"
+            max="0"
+            step="0.1"
+            value="0"
+            aria-label="Перемотка видео"
+        >
+
+        <span id="time-display" class="time-display">
+            0:00 / 0:00
+        </span>
+
+        <button id="btn-sync-now" class="sync-btn" type="button">
+            ↻ Синхр.
+        </button>
     </div>
 </div>
 
-<!-- PeerJS -->
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-<!-- YouTube Iframe API -->
 <script src="https://www.youtube.com/iframe_api"></script>
 
 <script>
-    // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
-    let peer = null;
-    let conn = null;
-    let isHost = false;
-    let player = null;
-    let playerReady = false;
-    let currentVideoId = null;
-    let isApplyingRemote = false;
-    let pendingCommands = [];      // очередь команд, ожидающих готовности плеера
-    let pendingOutgoing = [];      // очередь исходящих команд до открытия соединения
-    let pendingPlayState = null;   // желаемое состояние play/pause после загрузки видео
-    let connectionTimeout = null;  // таймаут подключения
+"use strict";
 
-    // DOM элементы
-    const btnCreateRoom = document.getElementById('btn-create-room');
-    const btnJoinRoom = document.getElementById('btn-join-room');
-    const joinRoomIdInput = document.getElementById('join-room-id');
-    const roomIdDisplay = document.getElementById('room-id-display');
-    const connectionStatus = document.getElementById('connection-status');
-    const videoUrlInput = document.getElementById('video-url');
-    const btnLoadVideo = document.getElementById('btn-load-video');
-    const btnPlayPause = document.getElementById('btn-play-pause');
-    const seekSlider = document.getElementById('seek-slider');
-    const timeDisplay = document.getElementById('time-display');
-    const btnSyncNow = document.getElementById('btn-sync-now');
+/* ==================== СОСТОЯНИЕ ==================== */
 
-    // ==================== ИНИЦИАЛИЗАЦИЯ YOUTUBE PLAYER ====================
-    function onYouTubeIframeAPIReady() {
-        player = new YT.Player('player', {
-            height: '100%',
-            width: '100%',
-            videoId: '',
-            playerVars: {
-                'autoplay': 0,
-                'controls': 1,
-                'rel': 0,
-                'modestbranding': 1,
-                'origin': window.location.origin,
-                'host': 'https://www.youtube.com'
-            },
-            events: {
-                'onReady': onPlayerReady,
-                'onStateChange': onPlayerStateChange,
-            }
+let peer = null;
+let conn = null;
+let isHost = false;
+
+let player = null;
+let playerReady = false;
+let currentVideoId = null;
+
+let isApplyingRemote = false;
+let isSeeking = false;
+
+let pendingCommands = [];
+let pendingOutgoing = [];
+let pendingPlayState = null;
+
+let connectionTimeout = null;
+let sliderTimer = null;
+
+const state = {
+    hostId: null
+};
+
+/* ==================== DOM ==================== */
+
+const btnCreateRoom = document.getElementById("btn-create-room");
+const btnJoinRoom = document.getElementById("btn-join-room");
+const joinRoomIdInput = document.getElementById("join-room-id");
+const roomIdDisplay = document.getElementById("room-id-display");
+const connectionStatus = document.getElementById("connection-status");
+
+const videoUrlInput = document.getElementById("video-url");
+const btnLoadVideo = document.getElementById("btn-load-video");
+
+const btnPlayPause = document.getElementById("btn-play-pause");
+const seekSlider = document.getElementById("seek-slider");
+const timeDisplay = document.getElementById("time-display");
+const btnSyncNow = document.getElementById("btn-sync-now");
+
+/* ==================== ИНТЕРФЕЙС ==================== */
+
+function setConnectionStatus(text, connected = false) {
+    connectionStatus.textContent = text;
+    connectionStatus.className = connected
+        ? "status connected"
+        : "status disconnected";
+}
+
+function setRoomControls(mode) {
+    const active = mode === "active";
+
+    btnCreateRoom.disabled = active && isHost;
+    btnJoinRoom.disabled = active && !isHost;
+    joinRoomIdInput.disabled = active && !isHost;
+}
+
+function resetConnection() {
+    if (connectionTimeout) {
+        clearTimeout(connectionTimeout);
+        connectionTimeout = null;
+    }
+
+    if (conn) {
+        try {
+            conn.close();
+        } catch (_) {
+            // Соединение уже могло быть закрыто
+        }
+    }
+
+    conn = null;
+}
+
+/* ==================== YOUTUBE ==================== */
+
+window.onYouTubeIframeAPIReady = function () {
+    player = new YT.Player("player", {
+        width: "100%",
+        height: "100%",
+        videoId: "",
+        playerVars: {
+            autoplay: 0,
+            controls: 1,
+            rel: 0,
+            modestbranding: 1
+        },
+        events: {
+            onReady: onPlayerReady,
+            onStateChange: onPlayerStateChange,
+            onError: onPlayerError
+        }
+    });
+};
+
+function onPlayerReady() {
+    playerReady = true;
+
+    updateSliderFromPlayer();
+    updatePlayPauseButton();
+
+    if (sliderTimer === null) {
+        sliderTimer = setInterval(updateSliderFromPlayer, 500);
+    }
+
+    flushPendingCommands();
+}
+
+function onPlayerError(event) {
+    console.error("Ошибка YouTube Player:", event.data);
+    alert("YouTube не смог загрузить это видео.");
+}
+
+function onPlayerStateChange(event) {
+    if (!playerReady) {
+        return;
+    }
+
+    updatePlayPauseButton();
+
+    if (pendingPlayState !== null &&
+        (
+            event.data === YT.PlayerState.CUED ||
+            event.data === YT.PlayerState.PLAYING ||
+            event.data === YT.PlayerState.PAUSED
+        )) {
+        const desiredState = pendingPlayState;
+        pendingPlayState = null;
+
+        setTimeout(() => {
+            applyPlayState(desiredState);
+        }, 100);
+
+        return;
+    }
+
+    if (isApplyingRemote || isSeeking || !conn || !conn.open) {
+        return;
+    }
+
+    if (event.data === YT.PlayerState.PLAYING) {
+        sendCommand({
+            type: "play",
+            currentTime: getCurrentTime()
+        });
+    } else if (event.data === YT.PlayerState.PAUSED) {
+        sendCommand({
+            type: "pause",
+            currentTime: getCurrentTime()
         });
     }
+}
 
-    function onPlayerReady() {
-        playerReady = true;
-        console.log('YouTube Player готов');
-        updateSliderFromPlayer();
-        setInterval(updateSliderFromPlayer, 500);
-        while (pendingCommands.length > 0) {
-            const cmd = pendingCommands.shift();
-            handleIncomingData(cmd);
-        }
+function applyPlayState(shouldPlay) {
+    if (!player || !playerReady) {
+        return;
     }
 
-    function onPlayerStateChange(event) {
-        if (isApplyingRemote) return;
-        if (conn && conn.open && playerReady) {
-            if (event.data === YT.PlayerState.PLAYING) {
-                sendCommand({ type: 'play', currentTime: player.getCurrentTime() });
-            } else if (event.data === YT.PlayerState.PAUSED) {
-                sendCommand({ type: 'pause', currentTime: player.getCurrentTime() });
-            }
-        }
+    isApplyingRemote = true;
 
-        if (pendingPlayState !== null && 
-            (event.data === YT.PlayerState.CUED || event.data === YT.PlayerState.PLAYING)) {
-            if (pendingPlayState) {
-                player.playVideo();
-            } else {
-                player.pauseVideo();
-            }
-            pendingPlayState = null;
+    try {
+        if (shouldPlay) {
+            player.playVideo();
+        } else {
+            player.pauseVideo();
         }
+    } finally {
+        setTimeout(() => {
+            isApplyingRemote = false;
+        }, 200);
+    }
+}
 
-        updatePlayPauseButton();
+function updatePlayPauseButton() {
+    if (!player || !playerReady) {
+        btnPlayPause.textContent = "▶️ Воспроизвести";
+        return;
     }
 
-    function updatePlayPauseButton() {
-        if (!player || !playerReady) return;
-        const state = player.getPlayerState();
-        btnPlayPause.textContent = (state === YT.PlayerState.PLAYING) ? '⏸ Pause' : '▶ Play';
+    const stateValue = player.getPlayerState();
+
+    btnPlayPause.textContent =
+        stateValue === YT.PlayerState.PLAYING
+            ? "⏸️ Пауза"
+            : "▶️ Воспроизвести";
+}
+
+function getCurrentTime() {
+    if (!player || !playerReady) {
+        return 0;
     }
 
-    // ==================== ФУНКЦИИ ДЛЯ ВИДЕО ====================
-    function extractYouTubeId(url) {
-        if (!url) return null;
-        const patterns = [
-            /(?:youtube\.com\/watch\?v=)([^&\s]+)/,
-            /(?:youtu\.be\/)([^?\s]+)/,
-            /(?:youtube\.com\/embed\/)([^?\s]+)/,
-            /(?:youtube\.com\/shorts\/)([^?\s]+)/
-        ];
-        for (const pattern of patterns) {
-            const match = url.match(pattern);
-            if (match && match[1]) return match[1];
-        }
-        if (/^[a-zA-Z0-9_-]{11}$/.test(url.trim())) return url.trim();
+    try {
+        return Number(player.getCurrentTime()) || 0;
+    } catch (_) {
+        return 0;
+    }
+}
+
+function getDuration() {
+    if (!player || !playerReady) {
+        return 0;
+    }
+
+    try {
+        return Number(player.getDuration()) || 0;
+    } catch (_) {
+        return 0;
+    }
+}
+
+function updateSliderFromPlayer() {
+    if (!player || !playerReady || isSeeking) {
+        return;
+    }
+
+    const currentTime = getCurrentTime();
+    const duration = getDuration();
+
+    if (duration <= 0) {
+        return;
+    }
+
+    seekSlider.max = String(duration);
+    seekSlider.value = String(
+        Math.min(Math.max(currentTime, 0), duration)
+    );
+
+    timeDisplay.textContent =
+        formatTime(currentTime) + " / " + formatTime(duration);
+}
+
+function formatTime(seconds) {
+    seconds = Math.max(0, Number(seconds) || 0);
+
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+
+    return minutes + ":" +
+        String(remainingSeconds).padStart(2, "0");
+}
+
+/* ==================== YOUTUBE URL ==================== */
+
+function extractYouTubeId(value) {
+    if (!value) {
         return null;
     }
 
-    function loadVideo(videoId, startTime = 0, playState = null) {
-        if (!player || !playerReady) {
-            console.warn('loadVideo: плеер не готов, команда поставлена в очередь');
-            pendingCommands.push({ type: 'load_video', videoId, currentTime: startTime, isPlaying: playState });
+    const input = value.trim();
+
+    if (/^[a-zA-Z0-9_-]{11}$/.test(input)) {
+        return input;
+    }
+
+    try {
+        const url = new URL(
+            input.startsWith("http") ? input : "https://" + input
+        );
+
+        const hostname = url.hostname.toLowerCase();
+
+        if (
+            hostname === "youtu.be" ||
+            hostname.endsWith(".youtu.be")
+        ) {
+            const id = url.pathname.split("/").filter(Boolean)[0];
+            return isValidYouTubeId(id) ? id : null;
+        }
+
+        if (
+            hostname === "youtube.com" ||
+            hostname.endsWith(".youtube.com")
+        ) {
+            const pathParts = url.pathname.split("/").filter(Boolean);
+
+            let id = null;
+
+            if (url.pathname === "/watch") {
+                id = url.searchParams.get("v");
+            } else if (
+                pathParts[0] === "embed" ||
+                pathParts[0] === "shorts" ||
+                pathParts[0] === "live"
+            ) {
+                id = pathParts[1];
+            }
+
+            return isValidYouTubeId(id) ? id : null;
+        }
+    } catch (_) {
+        return null;
+    }
+
+    return null;
+}
+
+function isValidYouTubeId(id) {
+    return typeof id === "string" &&
+        /^[a-zA-Z0-9_-]{11}$/.test(id);
+}
+
+/* ==================== ВИДЕО ==================== */
+
+function loadVideo(videoId, startTime = 0, playState = false) {
+    if (!isValidYouTubeId(videoId)) {
+        return;
+    }
+
+    currentVideoId = videoId;
+    pendingPlayState = playState;
+
+    if (!player || !playerReady) {
+        pendingCommands.push({
+            type: "load_video",
+            videoId,
+            currentTime: startTime,
+            isPlaying: playState
+        });
+
+        return;
+    }
+
+    isApplyingRemote = true;
+
+    try {
+        player.loadVideoById({
+            videoId,
+            startSeconds: Math.max(0, Number(startTime) || 0)
+        });
+    } finally {
+        setTimeout(() => {
+            isApplyingRemote = false;
+        }, 500);
+    }
+
+    updatePlayPauseButton();
+}
+
+function flushPendingCommands() {
+    while (pendingCommands.length > 0) {
+        handleIncomingData(pendingCommands.shift());
+    }
+}
+
+/* ==================== PEERJS ==================== */
+
+function initPeer() {
+    if (typeof Peer === "undefined") {
+        alert("Не удалось загрузить PeerJS.");
+        return;
+    }
+
+    peer = new Peer({
+        debug: 2
+    });
+
+    peer.on("open", handlePeerOpen);
+
+    peer.on("connection", incomingConnection => {
+        if (!isHost || conn) {
+            incomingConnection.close();
             return;
         }
-        if (!videoId) return;
 
-        currentVideoId = videoId;
-        pendingPlayState = playState;
-        if (startTime > 0) {
-            player.loadVideoById({ videoId: videoId, startSeconds: startTime });
-        } else {
-            player.loadVideoById(videoId);
+        conn = incomingConnection;
+        setupConnection(conn);
+    });
+
+    peer.on("error", error => {
+        console.error("Ошибка PeerJS:", error);
+
+        setConnectionStatus(
+            "Ошибка: " + (error.type || "неизвестная"),
+            false
+        );
+
+        if (error.type === "unavailable-id") {
+            alert("Этот ID комнаты уже занят. Создайте комнату заново.");
         }
-        updatePlayPauseButton();
+    });
+
+    peer.on("disconnected", () => {
+        setConnectionStatus("PeerJS отключён", false);
+    });
+
+    peer.on("close", () => {
+        setConnectionStatus("Соединение закрыто", false);
+    });
+}
+
+function handlePeerOpen(id) {
+    if (isHost) {
+        roomIdDisplay.textContent = id;
+        setConnectionStatus("Ожидание гостя...", false);
+        return;
     }
 
-    function updateSliderFromPlayer() {
-        if (!player || !playerReady || typeof player.getCurrentTime !== 'function') return;
-        try {
-            const currentTime = player.getCurrentTime() || 0;
-            const duration = player.getDuration() || 0;
-            if (duration > 0) {
-                seekSlider.max = duration;
-                seekSlider.value = currentTime;
-                timeDisplay.textContent = formatTime(currentTime) + ' / ' + formatTime(duration);
-            }
-        } catch (e) {}
-    }
+    roomIdDisplay.textContent = state.hostId;
 
-    function formatTime(seconds) {
-        const m = Math.floor(seconds / 60);
-        const s = Math.floor(seconds % 60);
-        return m + ':' + (s < 10 ? '0' : '') + s;
-    }
+    const outgoingConnection = peer.connect(state.hostId, {
+        reliable: true
+    });
+    conn = outgoingConnection;
+    setupConnection(outgoingConnection);
 
-    // ==================== PEERJS / КОМНАТА ====================
-    function initPeer() {
-        peer = new Peer({ debug: 2 });
+    connectionTimeout = setTimeout(() => {
+        if (!conn || !conn.open) {
+            setConnectionStatus("Не удалось подключиться", false);
+            resetConnection();
+        }
+    }, 10000);
+}
 
-        peer.on('open', (id) => {
-            console.log('Мой Peer ID:', id);
-            if (isHost) {
-                roomIdDisplay.textContent = id;
-                connectionStatus.textContent = 'Ожидание гостя...';
-                connectionStatus.className = 'status disconnected';
-            } else {
-                const hostId = window.pendingHostId;
-                if (hostId && !conn) {
-                    const connection = peer.connect(hostId, { reliable: true });
-                    conn = connection;
-                    setupConnection(connection);
-                    connectionTimeout = setTimeout(() => {
-                        if (!conn.open) {
-                            connectionStatus.textContent = 'Не удалось подключиться (таймаут)';
-                            connectionStatus.className = 'status disconnected';
-                            conn.close();
-                            conn = null;
-                        }
-                    }, 10000);
-                }
-            }
-        });
-
-        peer.on('connection', (incomingConn) => {
-            if (isHost && !conn) {
-                conn = incomingConn;
-                setupConnection(conn);
-                connectionStatus.textContent = 'Гость подключён!';
-                connectionStatus.className = 'status connected';
-            } else {
-                incomingConn.on('open', () => incomingConn.close());
-            }
-        });
-
-        peer.on('error', (err) => {
-            console.error('PeerJS ошибка:', err);
-            alert('Ошибка PeerJS: ' + err.type);
-        });
-    }
-
-    function setupConnection(connection) {
-        connection.on('open', () => {
-            console.log('Соединение установлено');
+function setupConnection(connection) {
+    connection.on("open", () => {
+        if (connectionTimeout) {
             clearTimeout(connectionTimeout);
-            connectionStatus.textContent = 'Соединено';
-            connectionStatus.className = 'status connected';
-            while (pendingOutgoing.length > 0) {
-                connection.send(pendingOutgoing.shift());
-            }
-            if (!isHost) {
-                sendCommand({ type: 'request_state' });
-            } else {
-                sendCurrentState();
-            }
-        });
-
-        connection.on('data', (data) => {
-            console.log('Получены данные:', data);
-            handleIncomingData(data);
-        });
-
-        connection.on('close', () => {
-            console.log('Соединение закрыто');
-            clearTimeout(connectionTimeout);
-            connectionStatus.textContent = 'Не подключено';
-            connectionStatus.className = 'status disconnected';
-            conn = null;
-        });
-
-        connection.on('error', (err) => {
-            console.error('Ошибка соединения:', err);
-            clearTimeout(connectionTimeout);
-            connectionStatus.textContent = 'Ошибка соединения';
-            connectionStatus.className = 'status disconnected';
-        });
-    }
-
-    function handleIncomingData(data) {
-        if (!data) return;
-        if (!playerReady && ['play', 'pause', 'seek', 'load_video', 'sync_state'].includes(data.type)) {
-            console.log('handleIncomingData: плеер не готов, команда в очередь', data);
-            pendingCommands.push(data);
-            return;
+            connectionTimeout = null;
         }
 
-        isApplyingRemote = true;
-        try {
-            switch (data.type) {
-                case 'play':
-                    if (player && playerReady && data.currentTime !== undefined) {
-                        player.seekTo(data.currentTime, true);
-                        player.playVideo();
-                    }
-                    break;
-                case 'pause':
-                    if (player && playerReady && data.currentTime !== undefined) {
-                        player.seekTo(data.currentTime, true);
-                        player.pauseVideo();
-                    }
-                    break;
-                case 'seek':
-                    if (player && playerReady && data.currentTime !== undefined) {
-                        player.seekTo(data.currentTime, true);
-                    }
-                    break;
-                case 'load_video':
-                    if (data.videoId) {
-                        loadVideo(data.videoId, data.currentTime || 0, false);
-                    }
-                    break;
-                case 'sync_state':
-                    if (data.videoId) {
-                        loadVideo(data.videoId, data.currentTime || 0, data.isPlaying ? true : false);
-                    }
-                    break;
-                case 'request_state':
-                    if (isHost) {
-                        sendCurrentState();
-                    }
-                    break;
-            }
-        } finally {
-            setTimeout(() => { isApplyingRemote = false; }, 100);
+        setConnectionStatus("Соединено", true);
+
+        while (pendingOutgoing.length > 0) {
+            connection.send(pendingOutgoing.shift());
         }
-        updatePlayPauseButton();
-    }
 
-    function sendCommand(data) {
-        console.log('Попытка отправки команды:', data, 'conn.open =', conn ? conn.open : false);
-        if (conn && conn.open) {
-            conn.send(data);
-        } else if (conn && !conn.open) {
-            console.log('Соединение ещё не открыто, команда в очередь отправки');
-            pendingOutgoing.push(data);
-        } else {
-            console.warn('Нет активного соединения, команда не отправлена');
-        }
-    }
-
-    function sendCurrentState() {
-        console.log('sendCurrentState вызван, isHost =', isHost, 'conn.open =', conn ? conn.open : false);
-        if (!isHost || !conn || !conn.open || !player || !playerReady || !currentVideoId) return;
-        const state = {
-            type: 'sync_state',
-            videoId: currentVideoId,
-            currentTime: player.getCurrentTime() || 0,
-            isPlaying: player.getPlayerState() === YT.PlayerState.PLAYING
-        };
-        conn.send(state);
-        console.log('Отправлено состояние:', state);
-    }
-
-    // ==================== ОБРАБОТЧИКИ КНОПОК ====================
-    btnCreateRoom.addEventListener('click', () => {
-        if (peer) peer.destroy();
-        isHost = true;
-        conn = null;
-        pendingOutgoing = [];
-        pendingCommands = [];
-        window.pendingHostId = null;
-        if (connectionTimeout) clearTimeout(connectionTimeout);
-        initPeer();
-        btnCreateRoom.disabled = true;
-        btnJoinRoom.disabled = false;
-        joinRoomIdInput.disabled = false;
-        roomIdDisplay.textContent = '...';
-        connectionStatus.textContent = 'Создание...';
-    });
-
-    btnJoinRoom.addEventListener('click', () => {
-        const hostId = joinRoomIdInput.value.trim();
-        if (!hostId) {
-            alert('Введите ID комнаты');
-            return;
-        }
-        if (peer) peer.destroy();
-        isHost = false;
-        conn = null;
-        pendingOutgoing = [];
-        pendingCommands = [];
-        window.pendingHostId = hostId;
-        if (connectionTimeout) clearTimeout(connectionTimeout);
-        initPeer();
-        btnJoinRoom.disabled = true;
-        btnCreateRoom.disabled = false;
-        connectionStatus.textContent = 'Подключение...';
-        connectionStatus.className = 'status disconnected';
-    });
-
-    btnLoadVideo.addEventListener('click', () => {
-        const url = videoUrlInput.value.trim();
-        const videoId = extractYouTubeId(url);
-        if (!videoId) {
-            alert('Не удалось распознать ссылку YouTube');
-            return;
-        }
-        loadVideo(videoId, 0, false);
-        sendCommand({ type: 'load_video', videoId: videoId, currentTime: 0 });
-    });
-
-    btnPlayPause.addEventListener('click', () => {
-        if (!player || !playerReady) return;
-        const state = player.getPlayerState();
-        if (state === YT.PlayerState.PLAYING) {
-            player.pauseVideo();
-        } else {
-            player.playVideo();
-        }
-    });
-
-    seekSlider.addEventListener('change', () => {
-        if (!player || !playerReady) return;
-        const newTime = parseFloat(seekSlider.value);
-        player.seekTo(newTime, true);
-        sendCommand({ type: 'seek', currentTime: newTime });
-    });
-
-    btnSyncNow.addEventListener('click', () => {
         if (isHost) {
             sendCurrentState();
-            alert('Состояние отправлено гостю');
-        } else if (conn && conn.open) {
-            sendCommand({ type: 'request_state' });
-            alert('Запрос отправлен хосту');
         } else {
-            alert('Нет соединения');
+            sendCommand({ type: "request_state" });
         }
     });
 
-    // Функция onYouTubeIframeAPIReady вызывается автоматически
+    connection.on("data", handleIncomingData);
+
+    connection.on("close", () => {
+        if (conn === connection) {
+            conn = null;
+        }
+
+        setConnectionStatus("Не подключено", false);
+    });
+
+    connection.on("error", error => {
+        console.error("Ошибка соединения:", error);
+
+        if (conn === connection) {
+            conn = null;
+        }
+
+        setConnectionStatus("Ошибка соединения", false);
+    });
+}
+
+/* ==================== ОБМЕН ДАННЫМИ ==================== */
+
+function sendCommand(data) {
+    if (!data || !data.type) {
+        return;
+    }
+
+    if (conn && conn.open) {
+        try {
+            conn.send(data);
+        } catch (error) {
+            console.error("Ошибка отправки данных:", error);
+        }
+
+        return;
+    }
+
+    if (conn && !conn.open) {
+        pendingOutgoing.push(data);
+    }
+}
+
+function sendCurrentState() {
+    if (
+        !isHost ||
+        !conn ||
+        !conn.open ||
+        !player ||
+        !playerReady ||
+        !currentVideoId
+    ) {
+        return;
+    }
+
+    sendCommand({
+        type: "sync_state",
+        videoId: currentVideoId,
+        currentTime: getCurrentTime(),
+        isPlaying: player.getPlayerState() === YT.PlayerState.PLAYING
+    });
+}
+
+function handleIncomingData(data) {
+    if (!data || typeof data !== "object" || !data.type) {
+        return;
+    }
+
+    const commandsRequiringPlayer = [
+        "play",
+        "pause",
+        "seek",
+        "load_video",
+        "sync_state"
+    ];
+
+    if (
+        !playerReady &&
+        commandsRequiringPlayer.includes(data.type)
+    ) {
+        pendingCommands.push(data);
+        return;
+    }
+
+    switch (data.type) {
+        case "load_video":
+            if (data.videoId) {
+                loadVideo(
+                    data.videoId,
+                    data.currentTime || 0,
+                    false
+                );
+            }
+            break;
+
+        case "sync_state":
+            if (data.videoId) {
+                loadVideo(
+                    data.videoId,
+                    data.currentTime || 0,
+                    Boolean(data.isPlaying)
+                );
+            }
+            break;
+
+        case "play":
+            applyRemoteTimeAndState(
+                data.currentTime,
+                true
+            );
+            break;
+
+        case "pause":
+            applyRemoteTimeAndState(
+                data.currentTime,
+                false
+            );
+            break;
+
+        case "seek":
+            applyRemoteSeek(data.currentTime);
+            break;
+
+        case "request_state":
+            if (isHost) {
+                sendCurrentState();
+            }
+            break;
+
+        default:
+            console.warn("Неизвестная команда:", data.type);
+    }
+}
+
+function applyRemoteTimeAndState(time, shouldPlay) {
+    if (!player || !playerReady) {
+        return;
+    }
+
+    isApplyingRemote = true;
+
+    try {
+        if (Number.isFinite(Number(time))) {
+            player.seekTo(Math.max(0, Number(time)), true);
+        }
+
+        if (shouldPlay) {
+            player.playVideo();
+        } else {
+            player.pauseVideo();
+        }
+    } finally {
+        setTimeout(() => {
+            isApplyingRemote = false;
+        }, 300);
+    }
+}
+
+function applyRemoteSeek(time) {
+    if (!player || !playerReady || !Number.isFinite(Number(time))) {
+        return;
+    }
+
+    isApplyingRemote = true;
+
+    try {
+        player.seekTo(Math.max(0, Number(time)), true);
+    } finally {
+        setTimeout(() => {
+            isApplyingRemote = false;
+        }, 200);
+    }
+}
+
+/* ==================== КНОПКИ ==================== */
+
+btnCreateRoom.addEventListener("click", () => {
+    resetConnection();
+
+    if (peer) {
+        peer.destroy();
+        peer = null;
+    }
+
+    isHost = true;
+    state.hostId = null;
+    pendingCommands = [];
+    pendingOutgoing = [];
+
+    roomIdDisplay.textContent = "...";
+    setConnectionStatus("Создание комнаты...", false);
+
+    btnCreateRoom.disabled = true;
+    btnJoinRoom.disabled = false;
+    joinRoomIdInput.disabled = false;
+
+    initPeer();
+});
+
+btnJoinRoom.addEventListener("click", () => {
+    const hostId = joinRoomIdInput.value.trim();
+
+    if (!hostId) {
+        alert("Введите ID комнаты.");
+        joinRoomIdInput.focus();
+        return;
+    }
+
+    resetConnection();
+
+    if (peer) {
+        peer.destroy();
+        peer = null;
+    }
+
+    isHost = false;
+    state.hostId = hostId;
+    pendingCommands = [];
+    pendingOutgoing = [];
+
+    roomIdDisplay.textContent = hostId;
+    setConnectionStatus("Подключение...", false);
+
+    btnJoinRoom.disabled = true;
+    btnCreateRoom.disabled = false;
+    joinRoomIdInput.disabled = false;
+
+    initPeer();
+});
+
+btnLoadVideo.addEventListener("click", () => {
+    const videoId = extractYouTubeId(videoUrlInput.value);
+
+    if (!videoId) {
+        alert("Не удалось распознать ссылку YouTube.");
+        return;
+    }
+
+    loadVideo(videoId, 0, false);
+
+    sendCommand({
+        type: "load_video",
+        videoId,
+        currentTime: 0,
+        isPlaying: false
+    });
+});
+
+btnPlayPause.addEventListener("click", () => {
+    if (!player || !playerReady) {
+        return;
+    }
+
+    const currentState = player.getPlayerState();
+    const shouldPlay = currentState !== YT.PlayerState.PLAYING;
+
+    applyPlayState(shouldPlay);
+
+    sendCommand({
+        type: shouldPlay ? "play" : "pause",
+        currentTime: getCurrentTime()
+    });
+});
+
+seekSlider.addEventListener("input", () => {
+    const duration = getDuration();
+
+    if (duration > 0) {
+        timeDisplay.textContent =
+            formatTime(Number(seekSlider.value)) +
+            " / " +
+            formatTime(duration);
+    }
+});
+
+seekSlider.addEventListener("pointerdown", () => {
+    isSeeking = true;
+});
+
+seekSlider.addEventListener("pointerup", () => {
+    isSeeking = false;
+});
+
+seekSlider.addEventListener("change", () => {
+    if (!player || !playerReady) {
+        return;
+    }
+
+    const newTime = Number(seekSlider.value);
+
+    isApplyingRemote = true;
+
+    try {
+        player.seekTo(newTime, true);
+    } finally {
+        setTimeout(() => {
+            isApplyingRemote = false;
+        }, 200);
+    }
+
+    sendCommand({
+        type: "seek",
+        currentTime: newTime
+    });
+});
+
+btnSyncNow.addEventListener("click", () => {
+    if (isHost) {
+        sendCurrentState();
+        alert("Состояние отправлено гостю.");
+    } else if (conn && conn.open) {
+        sendCommand({ type: "request_state" });
+        alert("Запрос отправлен хосту.");
+    } else {
+        alert("Нет соединения.");
+    }
+});
+
+joinRoomIdInput.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+        btnJoinRoom.click();
+    }
+});
+
+videoUrlInput.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+        btnLoadVideo.click();
+    }
+});
+
+window.addEventListener("beforeunload", () => {
+    if (connectionTimeout) {
+        clearTimeout(connectionTimeout);
+    }
+
+    if (sliderTimer) {
+        clearInterval(sliderTimer);
+    }
+
+    if (peer) {
+        peer.destroy();
+    }
+});
 </script>
 </body>
 </html>
