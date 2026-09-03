@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Синхронный просмотр YouTube</title>
-    <!-- Предотвращение запроса favicon.ico (404) -->
     <link rel="icon" href="data:,">
     <style>
         :root {
@@ -247,7 +246,8 @@
     let isApplyingRemote = false;
     let pendingCommands = [];      // очередь команд, ожидающих готовности плеера
     let pendingOutgoing = [];      // очередь исходящих команд до открытия соединения
-    let pendingPlayState = null;   // желаемое состояние play/pause после загрузки видео (true/false/null)
+    let pendingPlayState = null;   // желаемое состояние play/pause после загрузки видео
+    let connectionTimeout = null;  // таймаут подключения
 
     // DOM элементы
     const btnCreateRoom = document.getElementById('btn-create-room');
@@ -273,8 +273,8 @@
                 'controls': 1,
                 'rel': 0,
                 'modestbranding': 1,
-                'origin': window.location.origin,          // устраняет ошибку postMessage
-                'host': 'https://www.youtube-nocookie.com' // используем nocookie-домен
+                'origin': window.location.origin,       // устраняет ошибку postMessage
+                'host': 'https://www.youtube.com'      // используем стандартный YouTube
             },
             events: {
                 'onReady': onPlayerReady,
@@ -344,12 +344,6 @@
         return null;
     }
 
-    /**
-     * Загружает видео и при необходимости устанавливает состояние воспроизведения.
-     * @param {string} videoId - ID видео YouTube.
-     * @param {number} startTime - Время начала (секунды).
-     * @param {boolean|null} playState - true = играть, false = пауза, null = не менять.
-     */
     function loadVideo(videoId, startTime = 0, playState = null) {
         if (!player || !playerReady) {
             console.warn('loadVideo: плеер не готов, команда поставлена в очередь');
@@ -403,6 +397,15 @@
                     const connection = peer.connect(hostId, { reliable: true });
                     conn = connection;
                     setupConnection(connection);
+                    // Таймаут подключения
+                    connectionTimeout = setTimeout(() => {
+                        if (!conn.open) {
+                            connectionStatus.textContent = 'Не удалось подключиться (таймаут)';
+                            connectionStatus.className = 'status disconnected';
+                            conn.close();
+                            conn = null;
+                        }
+                    }, 10000); // 10 секунд
                 }
             }
         });
@@ -428,6 +431,7 @@
     function setupConnection(connection) {
         connection.on('open', () => {
             console.log('Соединение установлено');
+            clearTimeout(connectionTimeout);
             connectionStatus.textContent = 'Соединено';
             connectionStatus.className = 'status connected';
             while (pendingOutgoing.length > 0) {
@@ -445,6 +449,7 @@
 
         connection.on('close', () => {
             console.log('Соединение закрыто');
+            clearTimeout(connectionTimeout);
             connectionStatus.textContent = 'Не подключено';
             connectionStatus.className = 'status disconnected';
             conn = null;
@@ -452,6 +457,7 @@
 
         connection.on('error', (err) => {
             console.error('Ошибка соединения:', err);
+            clearTimeout(connectionTimeout);
             connectionStatus.textContent = 'Ошибка соединения';
             connectionStatus.className = 'status disconnected';
         });
@@ -487,13 +493,11 @@
                     break;
                 case 'load_video':
                     if (data.videoId) {
-                        // Загружаем видео, после загрузки оно будет на паузе (false)
                         loadVideo(data.videoId, data.currentTime || 0, false);
                     }
                     break;
                 case 'sync_state':
                     if (data.videoId) {
-                        // Загружаем видео с указанием желаемого состояния
                         loadVideo(data.videoId, data.currentTime || 0, data.isPlaying ? true : false);
                     }
                     break;
@@ -539,6 +543,8 @@
         conn = null;
         pendingOutgoing = [];
         pendingCommands = [];
+        window.pendingHostId = null;
+        if (connectionTimeout) clearTimeout(connectionTimeout);
         initPeer();
         btnCreateRoom.disabled = true;
         btnJoinRoom.disabled = false;
@@ -558,7 +564,8 @@
         conn = null;
         pendingOutgoing = [];
         pendingCommands = [];
-        window.pendingHostId = hostId; // сохраняем для подключения после открытия peer
+        window.pendingHostId = hostId;
+        if (connectionTimeout) clearTimeout(connectionTimeout);
         initPeer();
         btnJoinRoom.disabled = true;
         btnCreateRoom.disabled = false;
@@ -573,9 +580,7 @@
             alert('Не удалось распознать ссылку YouTube');
             return;
         }
-        // Локально загружаем видео и ставим на паузу (false)
         loadVideo(videoId, 0, false);
-        // Отправляем партнёру
         sendCommand({ type: 'load_video', videoId: videoId, currentTime: 0 });
     });
 
@@ -587,7 +592,6 @@
         } else {
             player.playVideo();
         }
-        // Состояние отправится автоматически через onPlayerStateChange
     });
 
     seekSlider.addEventListener('change', () => {
