@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Синхронный просмотр YouTube</title>
     <link rel="icon" href="data:,">
     <style>
@@ -13,6 +13,7 @@
             --text: #eee;
             --muted: #aaa;
             --success: #4caf50;
+            --touch-target: 44px; /* минимальный размер для касания */
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,6 +43,7 @@
             font-weight: 300;
             letter-spacing: 1px;
             color: var(--accent);
+            font-size: 1.8rem;
         }
 
         .room-section {
@@ -59,11 +61,13 @@
             background: var(--accent);
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 12px 20px;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 16px;
             transition: 0.2s;
+            min-height: var(--touch-target);
+            white-space: nowrap;
         }
         .room-section button:hover { filter: brightness(1.2); }
         .room-section button:disabled { background: #555; cursor: not-allowed; }
@@ -71,27 +75,31 @@
         .room-id-display {
             font-family: monospace;
             background: #000;
-            padding: 8px 12px;
+            padding: 10px 12px;
             border-radius: 6px;
             font-size: 16px;
             letter-spacing: 1px;
             user-select: all;
+            word-break: break-all;
+            max-width: 100%;
         }
 
         .input-group {
             display: flex;
             gap: 10px;
             align-items: center;
+            flex-wrap: wrap;
         }
 
         .input-group input {
-            padding: 10px;
+            padding: 12px;
             border-radius: 6px;
             border: 1px solid #444;
             background: #0f0f1a;
             color: var(--text);
-            font-size: 14px;
+            font-size: 16px;  /* предотвращает зум на iOS */
             width: 220px;
+            min-height: var(--touch-target);
         }
 
         .status {
@@ -100,6 +108,7 @@
             border-radius: 20px;
             font-size: 14px;
             background: #333;
+            white-space: nowrap;
         }
         .status.connected { background: var(--success); color: #000; }
         .status.disconnected { background: #555; }
@@ -112,13 +121,14 @@
         }
         .video-url-section input {
             flex: 1;
-            min-width: 250px;
-            padding: 12px;
+            min-width: 200px;
+            padding: 14px;
             border-radius: 8px;
             border: 1px solid #444;
             background: #0f0f1a;
             color: var(--text);
-            font-size: 15px;
+            font-size: 16px;
+            min-height: var(--touch-target);
         }
         .video-url-section button {
             background: #3498db;
@@ -127,8 +137,10 @@
             padding: 12px 25px;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 15px;
+            font-size: 16px;
             transition: 0.2s;
+            min-height: var(--touch-target);
+            white-space: nowrap;
         }
         .video-url-section button:hover { background: #2980b9; }
 
@@ -158,12 +170,13 @@
             background: #2c3e50;
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 12px 20px;
             border-radius: 6px;
             cursor: pointer;
             font-size: 16px;
             transition: 0.2s;
-            min-width: 80px;
+            min-height: var(--touch-target);
+            min-width: 90px;
         }
         .controls button:hover { background: #34495e; }
         .controls button.primary { background: var(--accent); }
@@ -171,15 +184,17 @@
 
         .seek-slider {
             flex: 1;
-            min-width: 200px;
+            min-width: 150px;
             accent-color: var(--accent);
             cursor: pointer;
+            height: 30px;
         }
 
         .time-display {
             font-family: monospace;
             font-size: 14px;
             color: var(--muted);
+            white-space: nowrap;
         }
 
         .sync-btn {
@@ -187,11 +202,35 @@
         }
         .sync-btn:hover { background: #2ecc71 !important; }
 
-        @media (max-width: 600px) {
+        /* ---------- Мобильная адаптация ---------- */
+        @media (max-width: 768px) {
             .container { padding: 15px; }
+            h1 { font-size: 1.5rem; }
             .room-section { flex-direction: column; align-items: stretch; }
             .status { margin-left: 0; text-align: center; }
-            .input-group input { width: 100%; }
+            .input-group { width: 100%; }
+            .input-group input { flex: 1; width: 100%; }
+            .input-group button { flex: 1; }
+            .video-url-section { flex-direction: column; }
+            .video-url-section input { width: 100%; }
+            .video-url-section button { width: 100%; }
+            .controls { gap: 10px; }
+            .controls button { padding: 10px 15px; font-size: 15px; }
+            .seek-slider { min-width: 120px; }
+        }
+
+        @media (max-width: 480px) {
+            body { padding: 10px; }
+            .container { padding: 10px; border-radius: 12px; }
+            h1 { font-size: 1.3rem; margin-bottom: 15px; }
+            .room-section { padding: 12px; gap: 10px; }
+            .room-section button { padding: 10px 12px; font-size: 15px; }
+            .room-id-display { font-size: 14px; padding: 8px 10px; }
+            .status { font-size: 13px; }
+            .video-url-section input { padding: 12px; font-size: 15px; }
+            .video-url-section button { padding: 12px; font-size: 15px; }
+            .controls button { min-width: 70px; padding: 10px; font-size: 14px; }
+            .time-display { font-size: 12px; }
         }
     </style>
 </head>
@@ -411,7 +450,6 @@
                 setupConnection(conn);
                 connectionStatus.textContent = 'Гость подключён!';
                 connectionStatus.className = 'status connected';
-                // Отправку состояния перенесли в обработчик open
             } else {
                 incomingConn.on('open', () => incomingConn.close());
             }
@@ -435,7 +473,6 @@
             if (!isHost) {
                 sendCommand({ type: 'request_state' });
             } else {
-                // Хост автоматически отправляет текущее состояние гостю
                 sendCurrentState();
             }
         });
